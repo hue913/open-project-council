@@ -8,12 +8,19 @@
 
 - 接入任意 OpenAI 兼容 HTTPS Endpoint，并为每个模型分配任务职责。
 - 对数学、编程、网页设计任务执行“独立方案 → 质疑 → 裁决”协议。
+- 自带数学证明、软件交付与网页设计三类可编辑任务模板，预填验收标准与最小权限边界。
 - 云端 API Key 采用 AES-256-GCM 信封加密；浏览器、运行记录和公开快照不保留明文。
 - Worker 将已加密的席位状态保存在本地数据文件或 Docker 数据卷中，重启后仍可用。
 - 项目默认私有；公开内容只来自用户选择且经过脱敏的快照。
 - 自带中文和 English 工作区、任务板、讨论记录、席位配置、反馈入口和桌面端检测骨架。
 
 当前未完成 GitHub OAuth、多用户隔离、数据库/KMS、原生 Anthropic/Gemini 协议、本地 Agent 实际执行、MCP、GitHub PR、Vercel 部署和持久化任务历史。请不要把这个 Alpha 直接公开到互联网或用于多租户生产环境。
+
+## 公开体验
+
+[公开体验站](https://hue913.github.io/open-project-council/)可以让任何人浏览任务模板、试运行不调用模型的示例议事，并查看协议与致谢。它是静态演示：不接收 API Key、不连接 Worker、不保存任务或项目数据。
+
+完整模型协作需要每位使用者自行部署私有实例。公开体验的构建与发布边界见[公开体验指南](docs/public-demo.md)。
 
 ## 快速开始
 
@@ -61,6 +68,12 @@ docker compose up --build
 
 `LocalEnvelopeCipher` 是本地参考实现，不是 KMS/Vault 的替代品。面向互联网部署前必须实现身份认证、项目授权、速率限制、审计存储与受管密钥服务。
 
+## 灵感与致谢
+
+Open Project Council 的任务协议、审计记录与模型接入，受到 RoundTalk、Decidi、MAD Studio、Hivemind、AutoGen、LangGraph 和 LiteLLM 的公开产品与技术思路启发。我们感谢这些社区的实践与分享，但不暗示任何隶属、合作、赞助或授权关系。
+
+完整的项目对应关系、采用的理念与独立取舍见[灵感与致谢](docs/acknowledgements.md)。
+
 ## 开发与验证
 
 ```bash
@@ -78,6 +91,8 @@ pnpm desktop:doctor
 - [安全策略](SECURITY.md)
 - [行为准则](CODE_OF_CONDUCT.md)
 - [架构说明](docs/architecture.md)
+- [公开体验指南](docs/public-demo.md)
+- [灵感与致谢](docs/acknowledgements.md)
 - [发布检查表](docs/release-checklist.md)
 - [变更记录](CHANGELOG.md)
 

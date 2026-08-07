@@ -10,6 +10,7 @@
     "dev:worker": "pnpm --filter @open-project-council/worker dev",
     "check:local": "node scripts/selfcheck.mjs",
     "start:local": "node scripts/start-local.mjs",
+    "build:public-demo": "node scripts/build-public-demo.mjs && node scripts/verify-public-demo.mjs",
     "build": "pnpm --filter @open-project-council/core build && pnpm --filter @open-project-council/connectors build && pnpm --filter @open-project-council/worker build && pnpm --filter @open-project-council/web build",
     "test": "pnpm -r --if-present test",
     "typecheck": "pnpm --filter @open-project-council/core build && pnpm --filter @open-project-council/connectors build && pnpm -r --if-present typecheck",

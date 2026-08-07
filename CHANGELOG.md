@@ -2,6 +2,18 @@
 
 遵循 Keep a Changelog 风格。
 
+## 0.1.0-alpha.3 - 2026-08-08
+
+### Added
+
+- 数学证明、软件交付和网页设计三种可编辑任务模板，内置验收标准与最小权限边界。
+- 工作区“关于与致谢”页面与完整的开源灵感说明，感谢 RoundTalk、Decidi、MAD Studio、Hivemind、AutoGen、LangGraph 和 LiteLLM 的公开实践。
+- 面向 GitHub Pages 的静态公开体验构建：可试运行本地示例议事，但不接收凭据、不请求 Worker，也不保存任务或项目数据。
+
+### Security
+
+- 公开体验改为独立构建入口，发布产物不包含私有工作台的模型配置表单或 `/api` 请求代码。
+
 ## 0.1.0-alpha.2 - 2026-08-08
 
 ### Added
