@@ -5,6 +5,12 @@ const now = () => new Date().toISOString();
 const roleTemplates: Record<TaskKind, string[]> = {
   math: ["独立求解器 A", "独立求解器 B", "验证器"],
   coding: ["架构师", "实现者", "测试与安全审查者"],
+  "code-review": ["代码审查者 A", "代码审查者 B", "安全与测试验证者"],
+  "security-audit": ["威胁建模者", "攻击路径审查者", "安全验证者"],
+  research: ["研究员", "反证审查者", "证据验证者"],
+  "data-analysis": ["数据分析师", "统计审查者", "结果验证者"],
+  "product-planning": ["产品策略师", "可行性审查者", "决策验证者"],
+  "technical-writing": ["技术作者", "读者审查者", "事实验证者"],
   "web-design": ["需求与 UX 分析者", "前端实现者", "截图审查者"],
 };
 
@@ -64,7 +70,11 @@ function message(runId: string, phase: RunPhase, author: string, role: string, c
   };
 }
 
-export function createDemoRun(task: Task, seats: AgentSeat[]): Run {
+/**
+ * Creates the protocol timeline shared by real Worker runs and the public demo.
+ * Callers replace only the phases backed by authorized connectors.
+ */
+export function createProtocolRun(task: Task, seats: AgentSeat[]): Run {
   const selected = selectMinimumSeats(task, seats);
   const runId = `run-${crypto.randomUUID()}`;
   const roles = rolesForTask(task.kind);

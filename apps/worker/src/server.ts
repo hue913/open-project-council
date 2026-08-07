@@ -1,4 +1,4 @@
-import { createDemoRun, redactSensitiveText, rolesForTask, selectMinimumSeats, type AgentKind, type AgentSeat, type Permission, type Run, type Task } from "@open-project-council/core";
+import { createProtocolRun, redactSensitiveText, rolesForTask, selectMinimumSeats, type AgentKind, type AgentSeat, type Permission, type Run, type Task, type TaskKind } from "@open-project-council/core";
 import { createOpenAICompatibleCompletion } from "@open-project-council/connectors";
 import { LocalEnvelopeCipher, type EncryptedSecret } from "@open-project-council/core/envelope";
 import { randomUUID } from "node:crypto";
@@ -9,7 +9,21 @@ const port = Number(process.env.WORKER_PORT ?? 8787);
 const MAX_REQUEST_BYTES = 64 * 1024;
 const agentSeats = new Map<string, AgentSeat>();
 const encryptedCredentials = new Map<string, EncryptedSecret>();
+const tasks = new Map<string, Task>();
+const runs = new Map<string, Run>();
 const validKinds = new Set<AgentKind>(["cloud_model", "local_coding_agent", "mcp_tool"]);
+const validTaskKinds = new Set<TaskKind>([
+  "math",
+  "coding",
+  "code-review",
+  "security-audit",
+  "research",
+  "data-analysis",
+  "product-planning",
+  "technical-writing",
+  "web-design",
+]);
+const validPermissions = new Set<Permission>(["read", "write", "execute", "deploy_preview", "deploy_production"]);
 const stateStore = new EncryptedStateStore(process.env.WORKER_DATA_PATH ?? "./data/worker-state.json");
 let persistChain = Promise.resolve();
 
@@ -25,8 +39,25 @@ interface AgentSeatSetup {
 }
 
 interface ExecuteRunRequest {
-  task: Task;
-  seats: AgentSeat[];
+  taskId: string;
+  seatIds: string[];
+}
+
+interface TaskDraft {
+  projectId: string;
+  title: string;
+  goal: string;
+  kind: TaskKind;
+  context: string[];
+  acceptanceCriteria: string[];
+  allowedTools: string[];
+  budgetUsd: number;
+  requiredPermissions: Permission[];
+}
+
+interface WorkspaceArchive {
+  tasks: Task[];
+  runs: Run[];
 }
 
 interface ModelInvocationResult {
@@ -65,6 +96,65 @@ async function readJson(request: import("node:http").IncomingMessage) {
 function requiredString(value: unknown, field: string) {
   if (typeof value !== "string" || !value.trim()) throw new Error(`${field} is required`);
   return value.trim();
+}
+
+function stringList(value: unknown, field: string, { allowEmpty = false }: { allowEmpty?: boolean } = {}) {
+  if (!Array.isArray(value) || (!allowEmpty && value.length === 0) || value.length > 50 || value.some((item) => typeof item !== "string" || !item.trim() || item.length > 4_000)) {
+    throw new Error(`${field} must be a valid list`);
+  }
+  return value.map((item) => item.trim());
+}
+
+function isTask(value: unknown): value is Task {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Record<string, unknown>;
+  return typeof candidate.id === "string"
+    && typeof candidate.projectId === "string"
+    && typeof candidate.title === "string"
+    && typeof candidate.goal === "string"
+    && typeof candidate.kind === "string"
+    && validTaskKinds.has(candidate.kind as TaskKind)
+    && Array.isArray(candidate.context)
+    && Array.isArray(candidate.acceptanceCriteria)
+    && Array.isArray(candidate.allowedTools)
+    && Array.isArray(candidate.requiredPermissions)
+    && typeof candidate.budgetUsd === "number"
+    && typeof candidate.status === "string"
+    && typeof candidate.createdAt === "string";
+}
+
+function isRun(value: unknown): value is Run {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Record<string, unknown>;
+  return typeof candidate.id === "string"
+    && typeof candidate.projectId === "string"
+    && typeof candidate.taskId === "string"
+    && Array.isArray(candidate.messages)
+    && Array.isArray(candidate.unresolvedRisks)
+    && Array.isArray(candidate.selectedAgentIds)
+    && typeof candidate.startedAt === "string";
+}
+
+function parseTaskDraft(body: unknown): TaskDraft {
+  if (!body || typeof body !== "object") throw new Error("Invalid task setup");
+  const candidate = body as Record<string, unknown>;
+  const kind = requiredString(candidate.kind, "kind") as TaskKind;
+  if (!validTaskKinds.has(kind)) throw new Error("Unsupported task kind");
+  const budgetUsd = candidate.budgetUsd;
+  if (typeof budgetUsd !== "number" || !Number.isFinite(budgetUsd) || budgetUsd < 0 || budgetUsd > 1_000) throw new Error("budgetUsd must be between 0 and 1000");
+  const requiredPermissions = stringList(candidate.requiredPermissions, "requiredPermissions", { allowEmpty: true }) as Permission[];
+  if (requiredPermissions.some((permission) => !validPermissions.has(permission))) throw new Error("Unsupported task permission");
+  return {
+    projectId: requiredString(candidate.projectId, "projectId"),
+    title: requiredString(candidate.title, "title"),
+    goal: requiredString(candidate.goal, "goal"),
+    kind,
+    context: stringList(candidate.context, "context", { allowEmpty: true }),
+    acceptanceCriteria: stringList(candidate.acceptanceCriteria, "acceptanceCriteria"),
+    allowedTools: stringList(candidate.allowedTools, "allowedTools", { allowEmpty: true }),
+    budgetUsd,
+    requiredPermissions,
+  };
 }
 
 function optionalEndpoint(value: unknown) {
@@ -109,19 +199,80 @@ function parseAgentSeatSetup(body: unknown): AgentSeatSetup {
   };
 }
 
+function workspaceArchive(): EncryptedSecret | undefined {
+  if (tasks.size === 0 && runs.size === 0) return undefined;
+  const cipher = envelopeCipher();
+  if (!cipher) throw new Error("Secure workspace storage is unavailable");
+  return cipher.encrypt(JSON.stringify({ tasks: [...tasks.values()], runs: [...runs.values()] } satisfies WorkspaceArchive));
+}
+
 function currentState() {
   return {
-    version: 1 as const,
+    version: 2 as const,
     seats: [...agentSeats.values()],
     credentials: Object.fromEntries(encryptedCredentials),
+    workspace: workspaceArchive(),
   };
 }
 
 function persistState() {
-  const state = currentState();
+  let state: ReturnType<typeof currentState>;
+  try {
+    state = currentState();
+  } catch (error) {
+    return Promise.reject(error);
+  }
   const write = persistChain.catch(() => undefined).then(() => stateStore.save(state));
   persistChain = write;
   return write;
+}
+
+function loadWorkspace(encrypted: EncryptedSecret | undefined) {
+  if (!encrypted) return;
+  const cipher = envelopeCipher();
+  if (!cipher) throw new Error("Secure workspace storage is unavailable");
+  const archive = JSON.parse(cipher.decrypt(encrypted)) as unknown;
+  if (!archive || typeof archive !== "object") throw new Error("Workspace archive is invalid");
+  const candidate = archive as Record<string, unknown>;
+  if (!Array.isArray(candidate.tasks) || !Array.isArray(candidate.runs) || !candidate.tasks.every(isTask) || !candidate.runs.every(isRun)) {
+    throw new Error("Workspace archive contains invalid records");
+  }
+  for (const task of candidate.tasks) tasks.set(task.id, task);
+  for (const run of candidate.runs) runs.set(run.id, run);
+}
+
+async function createTask(draft: TaskDraft) {
+  const task: Task = {
+    id: `task-${randomUUID()}`,
+    ...draft,
+    status: "draft",
+    createdAt: new Date().toISOString(),
+  };
+  tasks.set(task.id, task);
+  try {
+    await persistState();
+    return task;
+  } catch (error) {
+    tasks.delete(task.id);
+    throw error;
+  }
+}
+
+async function saveCompletedRun(task: Task, run: Run) {
+  const priorTask = tasks.get(task.id);
+  const priorRun = runs.get(run.id);
+  const completedTask = { ...task, status: "ready" as const };
+  tasks.set(task.id, completedTask);
+  runs.set(run.id, run);
+  try {
+    await persistState();
+  } catch (error) {
+    if (priorTask) tasks.set(task.id, priorTask);
+    else tasks.delete(task.id);
+    if (priorRun) runs.set(run.id, priorRun);
+    else runs.delete(run.id);
+    throw error;
+  }
 }
 
 async function createAgentSeat(setup: AgentSeatSetup) {
@@ -179,20 +330,31 @@ function protocolPrompt(task: Task, role: string, instruction: string, evidence:
   ].join("\n\n")).value.slice(0, 18_000);
 }
 
-async function executeRun(body: ExecuteRunRequest): Promise<Run> {
+function redactRunText(run: Run): Run {
+  const redact = (value: string) => redactSensitiveText(value).value;
+  return {
+    ...run,
+    messages: run.messages.map((message) => ({
+      ...message,
+      content: redact(message.content),
+      evidence: message.evidence.map(redact),
+    })),
+    unresolvedRisks: run.unresolvedRisks.map(redact),
+  };
+}
+
+async function executeRun(task: Task, seatIds: string[]): Promise<Run> {
   // The request may choose from seats, but it cannot provide a seat definition.
-  const requestedSeatIds = new Set(body.seats.map((seat) => seat.id));
+  const requestedSeatIds = new Set(seatIds);
   const trustedSeats = [...agentSeats.values()].filter((seat) =>
-    seat.projectId === body.task.projectId && requestedSeatIds.has(seat.id),
+    seat.projectId === task.projectId && requestedSeatIds.has(seat.id),
   );
-  const selected = selectMinimumSeats(body.task, trustedSeats);
-  const run = createDemoRun(body.task, selected);
-  const roles = rolesForTask(body.task.kind);
+  const selected = selectMinimumSeats(task, trustedSeats);
+  if (selected.length === 0) throw new Error("No enabled model seats are selected for this task");
+  const run = createProtocolRun(task, selected);
+  const roles = rolesForTask(task.kind);
   const risks: string[] = [];
   let invokedModelCount = 0;
-  if (selected.length === 0) {
-    risks.push("本次没有已配置且获选的席位；仅生成了不包含模型输出的协议记录。");
-  }
   async function invokeCloudSeat(seat: AgentSeat, role: string, prompt: string): Promise<ModelInvocationResult> {
     if (seat.kind !== "cloud_model") {
       return { risk: `${seat.name} 需要桌面执行器或 MCP 连接，本次未作为云端模型调用。` };
@@ -224,7 +386,7 @@ async function executeRun(body: ExecuteRunRequest): Promise<Run> {
   }
 
   const proposalResults = await Promise.all(selected.map((seat, index) =>
-    invokeCloudSeat(seat, roles[index] ?? seat.roles[0] ?? "分析者", taskPrompt(body.task, roles[index] ?? seat.roles[0] ?? "分析者")),
+    invokeCloudSeat(seat, roles[index] ?? seat.roles[0] ?? "分析者", taskPrompt(task, roles[index] ?? seat.roles[0] ?? "分析者")),
   ));
   for (const result of proposalResults) if (result.risk) risks.push(result.risk);
 
@@ -237,14 +399,14 @@ async function executeRun(body: ExecuteRunRequest): Promise<Run> {
   const criticSeat = cloudSeats.find((seat) => seat.roles.includes(roles.at(-1) ?? "")) ?? cloudSeats[0];
   const criticRole = roles.at(-1) ?? "审查者";
   const critiqueResult = criticSeat && proposalTexts.length > 0
-    ? await invokeCloudSeat(criticSeat, criticRole, protocolPrompt(body.task, criticRole, "请逐项质疑方案中的不可验证主张、边界条件、成本与安全风险；保留无法消解的分歧。", proposalTexts))
+    ? await invokeCloudSeat(criticSeat, criticRole, protocolPrompt(task, criticRole, "请逐项质疑方案中的不可验证主张、边界条件、成本与安全风险；保留无法消解的分歧。", proposalTexts))
     : { risk: "没有可用于质疑的云端方案输出。" };
   if (critiqueResult.risk) risks.push(critiqueResult.risk);
 
   const deciderSeat = cloudSeats.find((seat) => seat.id !== criticSeat?.id) ?? criticSeat;
   const decisionEvidence = [...proposalTexts, ...(critiqueResult.content ? [critiqueResult.content] : [])];
   const decisionResult = deciderSeat && decisionEvidence.length > 0
-    ? await invokeCloudSeat(deciderSeat, "裁决者", protocolPrompt(body.task, "裁决者", "请按验收标准选择或合成方案，列出证据、剩余分歧和执行前必须确认的权限；不要把少数意见写成共识。", decisionEvidence))
+    ? await invokeCloudSeat(deciderSeat, "裁决者", protocolPrompt(task, "裁决者", "请按验收标准选择或合成方案，列出证据、剩余分歧和执行前必须确认的权限；不要把少数意见写成共识。", decisionEvidence))
     : { risk: "没有足够的证据生成模型裁决。" };
   if (decisionResult.risk) risks.push(decisionResult.risk);
 
@@ -262,6 +424,7 @@ async function executeRun(body: ExecuteRunRequest): Promise<Run> {
     if (entry.phase === "verification") return { ...entry, content: "本次没有执行测试、截图或数学验证；验证阶段仍需获授权的验证器和工具。" };
     return entry;
   });
+  if (invokedModelCount === 0) throw new Error("No cloud model call succeeded; no simulated result was saved");
   return {
     ...run,
     messages,
@@ -274,6 +437,7 @@ async function executeRun(body: ExecuteRunRequest): Promise<Run> {
 const stateReady = stateStore.load().then((state) => {
   for (const seat of state.seats) agentSeats.set(seat.id, seat);
   for (const [credentialId, encrypted] of Object.entries(state.credentials)) encryptedCredentials.set(credentialId, encrypted);
+  loadWorkspace(state.workspace);
 });
 
 const server = createServer(async (request, response) => {
@@ -291,19 +455,57 @@ const server = createServer(async (request, response) => {
   if (request.method === "POST" && request.url === "/runs/demo") {
     try {
       const body = await readJson(request) as { task: Task; seats: AgentSeat[] };
-      const run = createDemoRun(body.task, body.seats);
-      return writeJson(response, 201, { run: JSON.parse(redactSensitiveText(JSON.stringify(run)).value) });
+      const run = createProtocolRun(body.task, body.seats);
+      return writeJson(response, 201, { run: redactRunText(run) });
     } catch (error) {
       return writeJson(response, 400, { error: error instanceof Error ? error.message : "Invalid request" });
     }
   }
 
+  if (request.method === "GET" && request.url?.startsWith("/api/tasks")) {
+    const url = new URL(request.url, `http://${request.headers.host ?? "localhost"}`);
+    const projectId = url.searchParams.get("projectId");
+    if (!projectId) return writeJson(response, 400, { error: "projectId is required" });
+    const projectTasks = [...tasks.values()]
+      .filter((task) => task.projectId === projectId)
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+    return writeJson(response, 200, { tasks: projectTasks });
+  }
+
+  if (request.method === "POST" && request.url === "/api/tasks") {
+    try {
+      const task = await createTask(parseTaskDraft(await readJson(request)));
+      return writeJson(response, 201, { task });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not save task";
+      return writeJson(response, message === "Secure workspace storage is unavailable" ? 503 : 400, { error: message });
+    }
+  }
+
+  if (request.method === "GET" && request.url?.startsWith("/api/runs")) {
+    const url = new URL(request.url, `http://${request.headers.host ?? "localhost"}`);
+    const projectId = url.searchParams.get("projectId");
+    const taskId = url.searchParams.get("taskId");
+    if (!projectId && !taskId) return writeJson(response, 400, { error: "projectId or taskId is required" });
+    const storedRuns = [...runs.values()]
+      .filter((run) => (projectId ? run.projectId === projectId : true) && (taskId ? run.taskId === taskId : true))
+      .sort((left, right) => right.startedAt.localeCompare(left.startedAt));
+    return writeJson(response, 200, { runs: storedRuns });
+  }
+
   if (request.method === "POST" && request.url === "/api/runs/execute") {
     try {
       const body = await readJson(request) as ExecuteRunRequest;
-      if (!body?.task || !Array.isArray(body.seats)) throw new Error("task and seats are required");
-      const run = await executeRun(body);
-      return writeJson(response, 201, { run: JSON.parse(redactSensitiveText(JSON.stringify(run)).value) });
+      if (!body || typeof body.taskId !== "string" || !Array.isArray(body.seatIds) || body.seatIds.some((seatId) => typeof seatId !== "string")) {
+        throw new Error("taskId and seatIds are required");
+      }
+      const task = tasks.get(body.taskId);
+      if (!task) return writeJson(response, 404, { error: "Task not found. Save the task before running it." });
+      // Model outputs are redacted before they enter the run. Redacting the whole
+      // serialized object can corrupt structural IDs such as task-<uuid>.
+      const run = await executeRun(task, body.seatIds);
+      await saveCompletedRun(task, run);
+      return writeJson(response, 201, { run });
     } catch (error) {
       return writeJson(response, 400, { error: error instanceof Error ? error.message : "Could not execute run" });
     }

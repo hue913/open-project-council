@@ -1,4 +1,4 @@
-import { createDemoRun, createPublicSnapshot, type AgentKind, type AgentSeat, type PublicSnapshotSelection, type Run, type Task, type TaskKind } from "@open-project-council/core";
+import { createProtocolRun, createPublicSnapshot, rolesForTask, type AgentKind, type AgentSeat, type PublicSnapshotSelection, type Run, type Task, type TaskKind } from "@open-project-council/core";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { demoProject, demoTask } from "./data";
 import { defaultTaskTemplate, taskTemplates, type TaskTemplate } from "./task-templates";
@@ -26,6 +26,24 @@ const agentRoleOptions = [
   { value: "架构师", zh: "架构师", en: "Architect" },
   { value: "实现者", zh: "实现者", en: "Implementer" },
   { value: "测试与安全审查者", zh: "测试与安全审查者", en: "Test and security reviewer" },
+  { value: "代码审查者 A", zh: "代码审查者 A", en: "Code reviewer A" },
+  { value: "代码审查者 B", zh: "代码审查者 B", en: "Code reviewer B" },
+  { value: "安全与测试验证者", zh: "安全与测试验证者", en: "Security and test verifier" },
+  { value: "威胁建模者", zh: "威胁建模者", en: "Threat modeler" },
+  { value: "攻击路径审查者", zh: "攻击路径审查者", en: "Attack-path reviewer" },
+  { value: "安全验证者", zh: "安全验证者", en: "Security verifier" },
+  { value: "研究员", zh: "研究员", en: "Researcher" },
+  { value: "反证审查者", zh: "反证审查者", en: "Counterevidence reviewer" },
+  { value: "证据验证者", zh: "证据验证者", en: "Evidence verifier" },
+  { value: "数据分析师", zh: "数据分析师", en: "Data analyst" },
+  { value: "统计审查者", zh: "统计审查者", en: "Statistical reviewer" },
+  { value: "结果验证者", zh: "结果验证者", en: "Result verifier" },
+  { value: "产品策略师", zh: "产品策略师", en: "Product strategist" },
+  { value: "可行性审查者", zh: "可行性审查者", en: "Feasibility reviewer" },
+  { value: "决策验证者", zh: "决策验证者", en: "Decision verifier" },
+  { value: "技术作者", zh: "技术作者", en: "Technical writer" },
+  { value: "读者审查者", zh: "读者审查者", en: "Reader reviewer" },
+  { value: "事实验证者", zh: "事实验证者", en: "Fact verifier" },
   { value: "需求与 UX 分析者", zh: "需求与 UX 分析者", en: "Requirements and UX analyst" },
   { value: "前端实现者", zh: "前端实现者", en: "Frontend implementer" },
   { value: "截图审查者", zh: "截图审查者", en: "Screenshot reviewer" },
@@ -35,7 +53,7 @@ const copy = {
   zh: {
     private: "私有项目", overview: "概览", tasks: "任务", council: "议事厅", publish: "发布快照", feedback: "反馈", about: "关于与致谢", publicDemo: "公开体验", publicDemoCopy: "不接收 API Key、不连接 Worker，也不保存任务。完整模型协作请自行部署私有实例。", selfHostFull: "部署完整实例", runDemo: "运行示例议事",
     createTask: "新建任务", run: "运行议事协议", running: "协议已完成", publishNow: "生成公开快照", preview: "打开 Vercel 预览",
-    taskTitle: "任务标题", taskGoal: "完成目标", kind: "任务类型", saveTask: "保存并加入任务板", cancel: "取消",
+    taskTitle: "任务标题", taskGoal: "完成目标", kind: "任务类型", requiredRoles: "所需席位职责", saveTask: "保存并加入任务板", savingTask: "正在加密保存", taskLoadError: "未能读取已保存的任务；当前仅显示本地草稿。", taskSaveError: "无法保存任务。", runError: "议事运行失败；未保存模拟结果。", cancel: "取消",
     project: "项目", agents: "代理席位", budget: "本次预算", toolBoundary: "工具边界", public: "公开内容", noRun: "还没有运行记录。先从一个任务开始。",
     ready: "就绪", queued: "排队中", processing: "执行中", decision: "裁决", risks: "未解决风险", discussion: "讨论记录",
     feedbackTitle: "提出反馈", feedbackPlaceholder: "说明建议、问题或想要改进的体验。", sendFeedback: "保存反馈", saved: "已保存，可在连接 GitHub 后同步为 Issue。",
@@ -49,7 +67,7 @@ const copy = {
   en: {
     private: "Private project", overview: "Overview", tasks: "Tasks", council: "Council", publish: "Publish snapshot", feedback: "Feedback", about: "About and thanks", publicDemo: "Public demo", publicDemoCopy: "This demo accepts no API keys, connects to no Worker, and stores no tasks. Self-host a private instance for full model collaboration.", selfHostFull: "Self-host the full app", runDemo: "Run sample council",
     createTask: "New task", run: "Run council protocol", running: "Protocol complete", publishNow: "Create public snapshot", preview: "Open Vercel preview",
-    taskTitle: "Task title", taskGoal: "Goal", kind: "Task kind", saveTask: "Save to task board", cancel: "Cancel",
+    taskTitle: "Task title", taskGoal: "Goal", kind: "Task kind", requiredRoles: "Required seat roles", saveTask: "Save to task board", savingTask: "Saving with encryption", taskLoadError: "Saved tasks could not be loaded; only a local draft is shown.", taskSaveError: "Could not save the task.", runError: "Council run failed; no simulated result was saved.", cancel: "Cancel",
     project: "Project", agents: "Agent seats", budget: "Run budget", toolBoundary: "Tool boundary", public: "Public content", noRun: "No runs yet. Start with a task.",
     ready: "Ready", queued: "Queued", processing: "Processing", decision: "Decision", risks: "Unresolved risks", discussion: "Discussion",
     feedbackTitle: "Send feedback", feedbackPlaceholder: "Describe an idea, issue, or a workflow to improve.", sendFeedback: "Save feedback", saved: "Saved. It can be synced to a GitHub Issue after you connect one.",
@@ -65,6 +83,12 @@ const copy = {
 const kindLabels: Record<TaskKind, { zh: string; en: string }> = {
   math: { zh: "数学推理", en: "Math reasoning" },
   coding: { zh: "编程", en: "Coding" },
+  "code-review": { zh: "代码审查", en: "Code review" },
+  "security-audit": { zh: "安全审计", en: "Security audit" },
+  research: { zh: "研究", en: "Research" },
+  "data-analysis": { zh: "数据分析", en: "Data analysis" },
+  "product-planning": { zh: "产品规划", en: "Product planning" },
+  "technical-writing": { zh: "技术写作", en: "Technical writing" },
   "web-design": { zh: "网页设计", en: "Web design" },
 };
 
@@ -81,6 +105,8 @@ const inspirations: { name: string; href: string; note: Record<Locale, string> }
 type Translation = (typeof copy)[keyof typeof copy];
 
 const statusLabel = (locale: Locale, status: string) => copy[locale][status as "ready" | "queued" | "processing"] ?? status;
+
+const roleLabel = (role: string, locale: Locale) => agentRoleOptions.find((option) => option.value === role)?.[locale] ?? role;
 
 export function App() {
   const isPublicDemo = import.meta.env.VITE_PUBLIC_DEMO === "true";
@@ -99,10 +125,56 @@ export function App() {
   const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null);
   const [showAgentComposer, setShowAgentComposer] = useState(false);
   const [agentSaved, setAgentSaved] = useState(false);
+  const [taskLoadFailed, setTaskLoadFailed] = useState(false);
+  const [taskSaving, setTaskSaving] = useState(false);
+  const [taskSaveError, setTaskSaveError] = useState<string | null>(null);
+  const [runError, setRunError] = useState<string | null>(null);
   const t = copy[locale];
   const selectedTask = tasks.find((task) => task.id === selectedTaskId) ?? tasks[0];
   const selectedSeats = useMemo(() => seats.filter((seat) => seat.enabled), [seats]);
   const navigation: View[] = isPublicDemo ? ["overview", "tasks", "council", "about"] : ["overview", "tasks", "council", "agents", "publish", "feedback", "about"];
+
+  useEffect(() => {
+    if (isPublicDemo) return;
+    let cancelled = false;
+    void fetch(`/api/tasks?projectId=${encodeURIComponent(demoProject.id)}`)
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Unable to load tasks");
+        return response.json() as Promise<{ tasks: Task[] }>;
+      })
+      .then(({ tasks: storedTasks }) => {
+        if (cancelled) return;
+        if (storedTasks.length > 0) {
+          setTasks(storedTasks);
+          setSelectedTaskId(storedTasks[0].id);
+        }
+        setTaskLoadFailed(false);
+      })
+      .catch(() => {
+        if (!cancelled) setTaskLoadFailed(true);
+      });
+    return () => { cancelled = true; };
+  }, [isPublicDemo]);
+
+  useEffect(() => {
+    if (isPublicDemo || selectedTaskId === demoTask.id) {
+      setRun(null);
+      return;
+    }
+    let cancelled = false;
+    void fetch(`/api/runs?taskId=${encodeURIComponent(selectedTaskId)}`)
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Unable to load runs");
+        return response.json() as Promise<{ runs: Run[] }>;
+      })
+      .then(({ runs: storedRuns }) => {
+        if (!cancelled) setRun(storedRuns[0] ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setRun(null);
+      });
+    return () => { cancelled = true; };
+  }, [isPublicDemo, selectedTaskId]);
 
   useEffect(() => {
     if (isPublicDemo) return;
@@ -123,27 +195,41 @@ export function App() {
     return () => { cancelled = true; };
   }, [isPublicDemo]);
 
-  function addTask(draft: TaskDraft) {
-    if (!draft.title || !draft.goal || draft.acceptanceCriteria.length === 0) return;
-    const task: Task = {
-      ...demoTask,
-      id: `task-${Date.now()}`,
-      ...draft,
-      status: "draft",
-      createdAt: new Date().toISOString(),
-    };
-    setTasks((current) => [task, ...current]);
-    setSelectedTaskId(task.id);
-    setShowComposer(false);
-    setView("tasks");
+  async function saveTask(draft: TaskDraft) {
+    const response = await fetch("/api/tasks", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ projectId: demoProject.id, ...draft }),
+    });
+    const payload = await response.json() as { task?: Task; error?: string };
+    if (!response.ok || !payload.task) throw new Error(payload.error ?? t.taskSaveError);
+    return payload.task;
+  }
+
+  async function addTask(draft: TaskDraft) {
+    if (!draft.title || !draft.goal || draft.acceptanceCriteria.length === 0 || taskSaving) return;
+    setTaskSaving(true);
+    setTaskSaveError(null);
+    try {
+      const task = await saveTask(draft);
+      setTasks((current) => [task, ...current.filter((currentTask) => currentTask.id !== task.id)]);
+      setSelectedTaskId(task.id);
+      setShowComposer(false);
+      setView("tasks");
+    } catch (error) {
+      setTaskSaveError(error instanceof Error ? error.message : t.taskSaveError);
+    } finally {
+      setTaskSaving(false);
+    }
   }
 
   async function runCouncil() {
     if (!selectedTask || isRunning) return;
     setIsRunning(true);
-    setTasks((current) => current.map((task) => task.id === selectedTask.id ? { ...task, status: "processing" } : task));
+    setRunError(null);
+    let taskForRun = selectedTask;
     if (isPublicDemo) {
-      const demoRun = createDemoRun({ ...selectedTask, status: "processing" }, []);
+      const demoRun = createProtocolRun({ ...selectedTask, status: "processing" }, []);
       setRun(demoRun);
       setTasks((current) => current.map((task) => task.id === selectedTask.id ? { ...task, status: "ready" } : task));
       setIsRunning(false);
@@ -151,21 +237,29 @@ export function App() {
       return;
     }
     try {
+      if (taskForRun.id === demoTask.id) {
+        const { id: _id, projectId: _projectId, status: _status, createdAt: _createdAt, ...draft } = taskForRun;
+        const savedTask = await saveTask(draft);
+        taskForRun = savedTask;
+        setTasks((current) => current.map((task) => task.id === selectedTask.id ? savedTask : task));
+        setSelectedTaskId(savedTask.id);
+      }
+      setTasks((current) => current.map((task) => task.id === taskForRun.id ? { ...task, status: "processing" } : task));
       const response = await fetch("/api/runs/execute", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ task: { ...selectedTask, status: "processing" }, seats: selectedSeats }),
+        body: JSON.stringify({ taskId: taskForRun.id, seatIds: selectedSeats.map((seat) => seat.id) }),
       });
       const payload = await response.json() as { run?: Run; error?: string };
       if (!response.ok || !payload.run) throw new Error(payload.error ?? "Could not execute council run");
       setRun(payload.run);
-    } catch {
-      const fallback = createDemoRun({ ...selectedTask, status: "processing" }, selectedSeats);
-      setRun({ ...fallback, unresolvedRisks: [...fallback.unresolvedRisks, "Worker 不可用；本次仅生成了本地演示记录，未调用云端模型。"] });
-    } finally {
-      setTasks((current) => current.map((task) => task.id === selectedTask.id ? { ...task, status: "ready" } : task));
-      setIsRunning(false);
+      setTasks((current) => current.map((task) => task.id === taskForRun.id ? { ...task, status: "ready" } : task));
       setView("council");
+    } catch (error) {
+      setRunError(error instanceof Error ? error.message : t.runError);
+      setTasks((current) => current.map((task) => task.id === taskForRun.id ? { ...task, status: "draft" } : task));
+    } finally {
+      setIsRunning(false);
     }
   }
 
@@ -219,10 +313,12 @@ export function App() {
       </aside>
 
       <section className="workspace">
-        <header className="topbar"><div><p className="eyebrow">{t.project}</p><h1>{demoProject.name}</h1><p className="subtle">{demoProject.description}</p></div><div className="topbar-actions">{isPublicDemo ? <><span className="demo-pill">{t.publicDemo}</span><a className="button secondary" href="https://github.com/hue913/open-project-council" target="_blank" rel="noreferrer">{t.selfHostFull}</a></> : <><span className="repo-pill">⌘ {demoProject.linkedRepository?.fullName}</span><button className="button secondary" onClick={() => { setAgentSaved(false); setShowAgentComposer(true); }}>{t.configureAgents}</button></>}<button className="button secondary" onClick={() => setShowComposer(true)}>{t.createTask}</button><button className="button primary" onClick={runCouncil} disabled={isRunning}>{isRunning ? t.processing : isPublicDemo ? t.runDemo : t.run}</button></div></header>
+        <header className="topbar"><div><p className="eyebrow">{t.project}</p><h1>{demoProject.name}</h1><p className="subtle">{demoProject.description}</p></div><div className="topbar-actions">{isPublicDemo ? <><span className="demo-pill">{t.publicDemo}</span><a className="button secondary" href="https://github.com/hue913/open-project-council" target="_blank" rel="noreferrer">{t.selfHostFull}</a></> : <><span className="repo-pill">⌘ {demoProject.linkedRepository?.fullName}</span><button className="button secondary" onClick={() => { setAgentSaved(false); setShowAgentComposer(true); }}>{t.configureAgents}</button></>}<button className="button secondary" onClick={() => { setTaskSaveError(null); setShowComposer(true); }}>{t.createTask}</button><button className="button primary" onClick={runCouncil} disabled={isRunning}>{isRunning ? t.processing : isPublicDemo ? t.runDemo : t.run}</button></div></header>
         {isPublicDemo && <section className="demo-notice"><strong>{t.publicDemo}</strong><span>{t.publicDemoCopy}</span></section>}
+        {taskLoadFailed && <p className="form-error" role="alert">{t.taskLoadError}</p>}
+        {runError && <p className="form-error" role="alert">{t.runError} {runError}</p>}
 
-        {showComposer && <TaskComposer t={t} locale={locale} onCancel={() => setShowComposer(false)} onSave={addTask} />}
+        {showComposer && <TaskComposer t={t} locale={locale} isSaving={taskSaving} saveError={taskSaveError} onCancel={() => setShowComposer(false)} onSave={addTask} />}
         {showAgentComposer && <AgentComposer t={t} locale={locale} onCancel={() => setShowAgentComposer(false)} onSave={addAgentSeat} />}
 
         {view === "overview" && <Overview t={t} locale={locale} task={selectedTask} run={run} seatCount={selectedSeats.length} isRunning={isRunning} isPublicDemo={isPublicDemo} onOpenTasks={() => setView("tasks")} onOpenCouncil={run ? () => setView("council") : runCouncil} />}
@@ -249,7 +345,7 @@ function Overview({ t, locale, task, run, seatCount, isRunning, isPublicDemo, on
 }
 
 function TaskBoard({ t, locale, tasks, selectedId, isRunning, isPublicDemo, onSelect, onRun }: { t: Translation; locale: Locale; tasks: Task[]; selectedId: string; isRunning: boolean; isPublicDemo: boolean; onSelect: (id: string) => void; onRun: () => void }) {
-  return <div className="content-grid task-grid"><section className="panel task-list"><div className="panel-heading"><div><p className="eyebrow">{t.taskBoard}</p><h2>{t.tasks}</h2></div><span>{tasks.length}</span></div>{tasks.map((task) => <button className={`task-row ${task.id === selectedId ? "selected" : ""}`} onClick={() => onSelect(task.id)} key={task.id}><span className={`status ${task.status}`}>{statusLabel(locale, task.status)}</span><strong>{task.title}</strong><small>{kindLabels[task.kind][locale]} · ${task.budgetUsd}</small></button>)}</section><section className="panel task-detail">{tasks.filter((task) => task.id === selectedId).map((task) => <div key={task.id}><p className="eyebrow">{t.acceptanceCriteria}</p><h2>{task.title}</h2><p>{task.goal}</p><ul className="criteria">{task.acceptanceCriteria.map((criterion) => <li key={criterion}>{criterion}</li>)}</ul><button className="button primary" onClick={onRun} disabled={isRunning}>{isRunning ? t.processing : isPublicDemo ? t.runDemo : t.run}</button></div>)}</section></div>;
+  return <div className="content-grid task-grid"><section className="panel task-list"><div className="panel-heading"><div><p className="eyebrow">{t.taskBoard}</p><h2>{t.tasks}</h2></div><span>{tasks.length}</span></div>{tasks.map((task) => <button className={`task-row ${task.id === selectedId ? "selected" : ""}`} onClick={() => onSelect(task.id)} key={task.id}><span className={`status ${task.status}`}>{statusLabel(locale, task.status)}</span><strong>{task.title}</strong><small>{kindLabels[task.kind][locale]} · ${task.budgetUsd}</small></button>)}</section><section className="panel task-detail">{tasks.filter((task) => task.id === selectedId).map((task) => <div key={task.id}><p className="eyebrow">{t.acceptanceCriteria}</p><h2>{task.title}</h2><p>{task.goal}</p><ul className="criteria">{task.acceptanceCriteria.map((criterion) => <li key={criterion}>{criterion}</li>)}</ul><p className="eyebrow">{t.requiredRoles}</p><div className="tag-row">{rolesForTask(task.kind).map((role) => <span key={role}>{roleLabel(role, locale)}</span>)}</div><button className="button primary" onClick={onRun} disabled={isRunning}>{isRunning ? t.processing : isPublicDemo ? t.runDemo : t.run}</button></div>)}</section></div>;
 }
 
 function CouncilView({ t, run }: { t: Translation; run: Run | null }) {
@@ -387,7 +483,7 @@ function AboutView({ t, locale }: { t: Translation; locale: Locale }) {
   </div>;
 }
 
-function TaskComposer({ t, locale, onCancel, onSave }: { t: Translation; locale: Locale; onCancel: () => void; onSave: (draft: TaskDraft) => void }) {
+function TaskComposer({ t, locale, isSaving, saveError, onCancel, onSave }: { t: Translation; locale: Locale; isSaving: boolean; saveError: string | null; onCancel: () => void; onSave: (draft: TaskDraft) => void }) {
   const [selectedTemplateId, setSelectedTemplateId] = useState(defaultTaskTemplate.id);
   const [title, setTitle] = useState(defaultTaskTemplate.title[locale]);
   const [goal, setGoal] = useState(defaultTaskTemplate.goal[locale]);
@@ -439,8 +535,8 @@ function TaskComposer({ t, locale, onCancel, onSave }: { t: Translation; locale:
       <label htmlFor="task-kind">{t.kind}<select id="task-kind" value={kind} onChange={(event) => selectKind(event.target.value as TaskKind)}>{(Object.keys(kindLabels) as TaskKind[]).map((option) => <option key={option} value={option}>{kindLabels[option][locale]}</option>)}</select></label>
       <label htmlFor="task-acceptance">{t.acceptanceCriteria}<textarea id="task-acceptance" value={acceptanceText} onChange={(event) => { setAcceptanceText(event.target.value); setError(null); }} required rows={4} /></label>
       <p className="form-help">{t.acceptanceHelp}</p>
-      {error && <p className="form-error" role="alert">{error}</p>}
+      {(error ?? saveError) && <p className="form-error" role="alert">{error ?? saveError}</p>}
     </div>
-    <div className="composer-actions"><button type="button" className="button secondary" onClick={onCancel}>{t.cancel}</button><button className="button primary" type="submit">{t.saveTask}</button></div>
+    <div className="composer-actions"><button type="button" className="button secondary" onClick={onCancel} disabled={isSaving}>{t.cancel}</button><button className="button primary" type="submit" disabled={isSaving}>{isSaving ? t.savingTask : t.saveTask}</button></div>
   </form></div>;
 }

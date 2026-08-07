@@ -1,7 +1,7 @@
 import type { PublicSnapshot, PublicSnapshotSelection } from "./types.js";
 
 const secretPatterns = [
-  /sk-[A-Za-z0-9_-]{16,}/g,
+  /\bsk-[A-Za-z0-9_-]{16,}/g,
   /(?:ghp|github_pat)_[A-Za-z0-9_]{20,}/g,
   /(?:xox[baprs]-)[A-Za-z0-9-]{10,}/g,
   /AIza[A-Za-z0-9_-]{20,}/g,

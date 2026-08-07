@@ -4,12 +4,13 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
 export interface PersistedWorkerState {
-  version: 1;
+  version: 2;
   seats: AgentSeat[];
   credentials: Record<string, EncryptedSecret>;
+  workspace?: EncryptedSecret;
 }
 
-const emptyState = (): PersistedWorkerState => ({ version: 1, seats: [], credentials: {} });
+const emptyState = (): PersistedWorkerState => ({ version: 2, seats: [], credentials: {} });
 
 function isEncryptedSecret(value: unknown): value is EncryptedSecret {
   if (!value || typeof value !== "object") return false;
@@ -35,16 +36,17 @@ function parseState(input: string): PersistedWorkerState {
   const value = JSON.parse(input) as unknown;
   if (!value || typeof value !== "object") throw new Error("Worker state is invalid");
   const candidate = value as Record<string, unknown>;
-  if (candidate.version !== 1 || !Array.isArray(candidate.seats) || !candidate.credentials || typeof candidate.credentials !== "object") {
+  if ((candidate.version !== 1 && candidate.version !== 2) || !Array.isArray(candidate.seats) || !candidate.credentials || typeof candidate.credentials !== "object") {
     throw new Error("Worker state has an unsupported format");
   }
-  if (!candidate.seats.every(isAgentSeat) || !Object.values(candidate.credentials).every(isEncryptedSecret)) {
+  if (!candidate.seats.every(isAgentSeat) || !Object.values(candidate.credentials).every(isEncryptedSecret) || (candidate.workspace !== undefined && !isEncryptedSecret(candidate.workspace))) {
     throw new Error("Worker state contains invalid records");
   }
   return {
-    version: 1,
+    version: 2,
     seats: candidate.seats,
     credentials: candidate.credentials as Record<string, EncryptedSecret>,
+    workspace: candidate.workspace as EncryptedSecret | undefined,
   };
 }
 

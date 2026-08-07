@@ -3,7 +3,7 @@
 ## Trust boundaries
 
 - The browser holds no cloud provider secret after setup; it sends provider setup requests to the local Worker through the Web proxy. Authentication is not implemented in the Alpha, so it is for a single trusted owner only.
-- A cloud envelope secret is decrypted only by the Worker immediately before a permitted provider call. Encrypted seat state is written to `WORKER_DATA_PATH`; the reference `LocalEnvelopeCipher` is a local adapter, not a KMS replacement.
+- A cloud envelope secret is decrypted only by the Worker immediately before a permitted provider call. Encrypted seats, tasks, and completed-run archives are written to `WORKER_DATA_PATH`; the reference `LocalEnvelopeCipher` is a local adapter, not a KMS replacement.
 - The desktop bridge makes outbound connections only. It discovers locally authenticated Codex / Claude Code commands without reading or uploading their credentials.
 - Project content is private by default. Publishing creates a separate, revocable snapshot with redaction scanning; it never changes the source project's visibility.
 
@@ -12,6 +12,13 @@
 `independent → critique → decision → execution → verification → complete`
 
 Only the declared transitions are valid. A failed phase ends the run with `error`; a disagreement becomes an unresolved risk rather than a fabricated consensus.
+
+## Task protocols
+
+- Math uses two independent solvers and a verifier.
+- Coding uses an architect, implementer, and test/security reviewer.
+- Code review, security audit, research, data analysis, product planning, technical writing, and web design each have their own three-seat role template.
+- The Worker stores the task before a real run and reloads completed runs from its encrypted archive after restart. The browser can choose only seat IDs; it cannot inject an arbitrary provider endpoint, role, or credential into a run request.
 
 ## Connector contract
 

@@ -7,14 +7,15 @@
 这是面向单个所有者、自托管使用的 Alpha。
 
 - 接入任意 OpenAI 兼容 HTTPS Endpoint，并为每个模型分配任务职责。
-- 对数学、编程、网页设计任务执行“独立方案 → 质疑 → 裁决”协议。
-- 自带数学证明、软件交付与网页设计三类可编辑任务模板，预填验收标准与最小权限边界。
-- 云端 API Key 采用 AES-256-GCM 信封加密；浏览器、运行记录和公开快照不保留明文。
-- Worker 将已加密的席位状态保存在本地数据文件或 Docker 数据卷中，重启后仍可用。
+- 对数学、编程、代码审查、安全审计、研究、数据分析、产品规划、技术写作和网页设计任务执行“独立方案 → 质疑 → 裁决”协议。
+- 提供 20 个可编辑任务预设，覆盖证明、调试、重构、研究比较、实验分析、威胁建模、产品发现、API 文档和响应式审查；每个预设都带有验收标准与最小权限边界。
+- 接入任意 OpenAI 兼容 HTTPS Endpoint 后，Worker 会实际调用已选云模型完成独立方案、质疑和裁决；调用失败不会伪造成功运行。
+- 云端 API Key、任务和运行记录采用 AES-256-GCM 信封加密；API Key 不会被浏览器持久化，模型输入、输出和公开快照会经过敏感信息脱敏。
+- Worker 将加密的席位、任务和运行档案保存在本地数据文件或 Docker 数据卷中，重启后仍可恢复。
 - 项目默认私有；公开内容只来自用户选择且经过脱敏的快照。
 - 自带中文和 English 工作区、任务板、讨论记录、席位配置、反馈入口和桌面端检测骨架。
 
-当前未完成 GitHub OAuth、多用户隔离、数据库/KMS、原生 Anthropic/Gemini 协议、本地 Agent 实际执行、MCP、GitHub PR、Vercel 部署和持久化任务历史。请不要把这个 Alpha 直接公开到互联网或用于多租户生产环境。
+当前未完成 GitHub OAuth、多用户隔离、数据库/KMS、原生 Anthropic/Gemini 协议、本地 Agent 实际执行、MCP、GitHub PR 和 Vercel 部署。请不要把这个 Alpha 直接公开到互联网或用于多租户生产环境。
 
 ## 公开体验
 
@@ -35,7 +36,7 @@ pnpm check:local
 pnpm start:local
 ```
 
-打开 `http://localhost:5173`，在“模型与代理”中添加至少一个云端模型。Endpoint 必须是 OpenAI 兼容的公共 HTTPS 地址，例如供应商提供的 `/v1` 地址。Worker 会将密钥加密写入 `WORKER_DATA_PATH`，默认位置为 `./data/worker-state.json`。
+打开 `http://localhost:5173`，在“模型与代理”中添加至少一个云端模型。Endpoint 必须是 OpenAI 兼容的公共 HTTPS 地址，例如供应商提供的 `/v1` 地址。Worker 会将密钥、任务和运行记录加密写入 `WORKER_DATA_PATH`，默认位置为 `./data/worker-state.json`。
 
 `start:local` 会同时启动 Worker 和 Web 服务，按 `Ctrl+C` 可一并停止。开发模式仍可在两个终端中分别运行：
 

@@ -1,4 +1,4 @@
-import { createDemoRun, type Run, type Task, type TaskKind } from "@open-project-council/core";
+import { createProtocolRun, type Run, type Task, type TaskKind } from "@open-project-council/core";
 import { useState, type FormEvent } from "react";
 import { demoProject, demoTask } from "./data";
 import { defaultTaskTemplate, taskTemplates, type TaskTemplate } from "./task-templates";
@@ -37,6 +37,12 @@ const inspiration = [
 const kindLabels: Record<TaskKind, Record<Locale, string>> = {
   math: { zh: "数学", en: "Math" },
   coding: { zh: "编程", en: "Coding" },
+  "code-review": { zh: "代码审查", en: "Code review" },
+  "security-audit": { zh: "安全审计", en: "Security audit" },
+  research: { zh: "研究", en: "Research" },
+  "data-analysis": { zh: "数据分析", en: "Data analysis" },
+  "product-planning": { zh: "产品规划", en: "Product planning" },
+  "technical-writing": { zh: "技术写作", en: "Technical writing" },
   "web-design": { zh: "网页设计", en: "Web design" },
 };
 
@@ -63,7 +69,7 @@ export function PublicDemoApp() {
   }
 
   function runDemo() {
-    setRun(createDemoRun({ ...selectedTask, status: "processing" }, []));
+    setRun(createProtocolRun({ ...selectedTask, status: "processing" }, []));
     setTasks((current) => current.map((task) => task.id === selectedTask.id ? { ...task, status: "ready" } : task));
     setView("council");
   }

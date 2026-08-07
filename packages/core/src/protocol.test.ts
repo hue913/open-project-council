@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { advanceRun, canAdvanceRun, createDemoRun, rolesForTask, selectMinimumSeats } from "./protocol.js";
+import { advanceRun, canAdvanceRun, createProtocolRun, rolesForTask, selectMinimumSeats } from "./protocol.js";
 import type { AgentSeat, Run, Task } from "./types.js";
 
 const task: Task = {
@@ -20,8 +20,17 @@ describe("multi-model protocol", () => {
     expect(selectMinimumSeats(task, seats).map((seat) => seat.id)).toEqual(["a", "b", "c"]);
   });
 
+  it("routes every specialized task type to a distinct protocol", () => {
+    expect(rolesForTask("research")).toEqual(["研究员", "反证审查者", "证据验证者"]);
+    expect(rolesForTask("data-analysis")).toEqual(["数据分析师", "统计审查者", "结果验证者"]);
+    expect(rolesForTask("code-review")).toEqual(["代码审查者 A", "代码审查者 B", "安全与测试验证者"]);
+    expect(rolesForTask("security-audit")).toEqual(["威胁建模者", "攻击路径审查者", "安全验证者"]);
+    expect(rolesForTask("product-planning")).toEqual(["产品策略师", "可行性审查者", "决策验证者"]);
+    expect(rolesForTask("technical-writing")).toEqual(["技术作者", "读者审查者", "事实验证者"]);
+  });
+
   it("preserves unresolved risks in a completed demo run", () => {
-    const run = createDemoRun(task, seats);
+    const run = createProtocolRun(task, seats);
     expect(run.phase).toBe("complete");
     expect(run.messages.some((entry) => entry.phase === "critique")).toBe(true);
     expect(run.unresolvedRisks).not.toHaveLength(0);

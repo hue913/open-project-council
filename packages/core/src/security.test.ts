@@ -10,6 +10,13 @@ describe("security boundaries", () => {
     expect(result.value).not.toContain("abcdefghijklmnopqrstuvwxyz");
   });
 
+  it("does not redact structured identifiers that merely contain a key-like fragment", () => {
+    const taskId = "task-abcdefghijklmnopqrstuvwx";
+    const result = redactSensitiveText(JSON.stringify({ taskId }));
+    expect(result.value).toContain(taskId);
+    expect(result.redactionCount).toBe(0);
+  });
+
   it("round trips a secret without exposing plaintext in the envelope", () => {
     const cipher = new LocalEnvelopeCipher(Buffer.alloc(32, 7));
     const encrypted = cipher.encrypt("keep-this-private");

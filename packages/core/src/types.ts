@@ -1,6 +1,15 @@
 export type Locale = "zh-CN" | "en";
 
-export type TaskKind = "math" | "coding" | "web-design";
+export type TaskKind =
+  | "math"
+  | "coding"
+  | "code-review"
+  | "security-audit"
+  | "research"
+  | "data-analysis"
+  | "product-planning"
+  | "technical-writing"
+  | "web-design";
 export type TaskStatus = "draft" | "queued" | "processing" | "ready" | "error";
 export type RunPhase = "independent" | "critique" | "decision" | "execution" | "verification" | "complete" | "failed";
 export type AgentKind = "cloud_model" | "local_coding_agent" | "mcp_tool";

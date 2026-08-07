@@ -17,15 +17,26 @@ describe("encrypted Worker state store", () => {
     const path = join(testDirectory, "worker-state.json");
     const store = new EncryptedStateStore(path);
     const state = {
-      version: 1 as const,
+      version: 2 as const,
       seats: [{ id: "seat-1", projectId: "project-1", name: "Model", kind: "cloud_model" as const, provider: "openai", roles: ["架构师"], capabilities: ["read" as const], credentialSource: "cloud_envelope" as const, credentialId: "credential-1", enabled: true }],
       credentials: { "credential-1": { ciphertext: "encrypted-value", iv: "iv", tag: "tag", keyId: "local" } },
+      workspace: { ciphertext: "encrypted-workspace", iv: "workspace-iv", tag: "workspace-tag", keyId: "local" },
     };
 
     await store.save(state);
 
     expect(await store.load()).toEqual(state);
     expect(await readFile(path, "utf8")).not.toContain("plaintext-api-key");
+    expect(await readFile(path, "utf8")).not.toContain("private-task-title");
+  });
+
+  it("migrates the previous state format without inventing workspace data", async () => {
+    testDirectory = await mkdtemp(join(tmpdir(), "council-worker-"));
+    const path = join(testDirectory, "worker-state.json");
+    const store = new EncryptedStateStore(path);
+    await writeFile(path, JSON.stringify({ version: 1, seats: [], credentials: {} }), "utf8");
+
+    await expect(store.load()).resolves.toEqual({ version: 2, seats: [], credentials: {}, workspace: undefined });
   });
 
   it("rejects a malformed state instead of silently discarding it", async () => {
