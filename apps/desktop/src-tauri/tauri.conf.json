@@ -5,8 +5,9 @@
   "identifier": "org.openprojectcouncil.desktop",
   "build": {
     "frontendDist": "../dist",
-    "beforeDevCommand": "",
-    "beforeBuildCommand": ""
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeDevCommand": "pnpm --filter @open-project-council/desktop web:dev",
+    "beforeBuildCommand": "pnpm --filter @open-project-council/desktop web:build"
   },
   "app": {
     "windows": [{ "title": "Open Project Council", "width": 1000, "height": 720 }],

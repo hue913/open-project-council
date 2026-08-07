@@ -17,10 +17,11 @@ describe("encrypted Worker state store", () => {
     const path = join(testDirectory, "worker-state.json");
     const store = new EncryptedStateStore(path);
     const state = {
-      version: 2 as const,
+      version: 3 as const,
       seats: [{ id: "seat-1", projectId: "project-1", name: "Model", kind: "cloud_model" as const, provider: "openai", roles: ["架构师"], capabilities: ["read" as const], credentialSource: "cloud_envelope" as const, credentialId: "credential-1", enabled: true }],
       credentials: { "credential-1": { ciphertext: "encrypted-value", iv: "iv", tag: "tag", keyId: "local" } },
       workspace: { ciphertext: "encrypted-workspace", iv: "workspace-iv", tag: "workspace-tag", keyId: "local" },
+      sessions: [],
     };
 
     await store.save(state);
@@ -36,7 +37,7 @@ describe("encrypted Worker state store", () => {
     const store = new EncryptedStateStore(path);
     await writeFile(path, JSON.stringify({ version: 1, seats: [], credentials: {} }), "utf8");
 
-    await expect(store.load()).resolves.toEqual({ version: 2, seats: [], credentials: {}, workspace: undefined });
+    await expect(store.load()).resolves.toEqual({ version: 3, seats: [], credentials: {}, workspace: undefined, sessions: [] });
   });
 
   it("rejects a malformed state instead of silently discarding it", async () => {

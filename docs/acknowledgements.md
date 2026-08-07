@@ -10,6 +10,6 @@ Open Project Council 感谢多模型协作、可审计决策与本地 Agent 社�
 | [Hivemind](https://github.com/hivementality-ai/hivemind) | 持久工作空间、工具边界和本地编码代理的实践 | 本项目把本地 Agent 与云端凭据分开，避免开放用户设备的入站访问。 |
 | [AutoGen](https://microsoft.github.io/autogen/) | 可组合的多 Agent 协作抽象 | 使用明确阶段、权限和预算约束组织运行。 |
 | [LangGraph](https://langchain-ai.github.io/langgraph/) | 状态化流程、可恢复执行和图式编排 | 运行只允许声明过的阶段迁移，失败和分歧保留在审计记录中。 |
-| [LiteLLM](https://docs.litellm.ai/) | 多供应商模型网关和统一调用接口 | 以 OpenAI 兼容 Endpoint 为当前 Alpha 的接入面，保留未来扩展空间。 |
+| [LiteLLM](https://docs.litellm.ai/) | 多供应商模型网关和统一调用接口 | 提供 OpenAI 兼容接入面，并与原生 Anthropic / Gemini 协议并存。 |
 
-这些参考帮助我们明确方向，但不替代独立的安全、隐私和工程判断。当前 Alpha 仍只适用于单个受信任所有者的自托管环境；身份认证、多用户隔离、受管 KMS、MCP 和远程交付集成会在具备相应安全边界后逐步实现。
+这些参考帮助我们明确方向，但不替代独立的安全、隐私和工程判断。Open Project Council 已实现身份认证、项目隔离、MCP 和远程交付接口；公网部署仍必须采用 Vault Transit、HTTPS、限流、监控与独立安全审计。

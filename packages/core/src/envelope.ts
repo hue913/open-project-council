@@ -7,11 +7,16 @@ export interface EncryptedSecret {
   keyId: string;
 }
 
+export interface SecretCipher {
+  encrypt(plaintext: string): EncryptedSecret | Promise<EncryptedSecret>;
+  decrypt(secret: EncryptedSecret): string | Promise<string>;
+}
+
 /**
  * Local reference implementation only. Production callers must replace this
  * with a KMS/Vault-backed key encryption provider before handling user secrets.
  */
-export class LocalEnvelopeCipher {
+export class LocalEnvelopeCipher implements SecretCipher {
   constructor(private readonly keyEncryptionKey: Buffer, private readonly keyId = "local-dev") {
     if (keyEncryptionKey.length !== 32) throw new Error("Envelope KEK must be 32 bytes");
   }

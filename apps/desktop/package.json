@@ -6,11 +6,16 @@
   "scripts": {
     "doctor": "node scripts/doctor.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "web:build": "vite build",
+    "web:dev": "vite --host 127.0.0.1 --port 1420",
+    "build": "tauri build",
+    "dev": "tauri dev",
     "tauri": "tauri"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.2.3",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vite": "^6.4.3"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.2.0"

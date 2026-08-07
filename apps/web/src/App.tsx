@@ -1,10 +1,10 @@
-import { createProtocolRun, createPublicSnapshot, rolesForTask, type AgentKind, type AgentSeat, type PublicSnapshotSelection, type Run, type Task, type TaskKind } from "@open-project-council/core";
+import { rolesForTask, type AgentKind, type AgentSeat, type Project, type ProjectRole, type Run, type Task, type TaskKind, type User } from "@open-project-council/core";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { demoProject, demoTask } from "./data";
 import { defaultTaskTemplate, taskTemplates, type TaskTemplate } from "./task-templates";
+import { PublicDemoApp } from "./PublicDemoApp";
 
 type Locale = "zh" | "en";
-type View = "overview" | "tasks" | "council" | "agents" | "publish" | "feedback" | "about";
+type View = "overview" | "tasks" | "council" | "agents" | "integrations" | "publish" | "feedback" | "about";
 
 type AgentSeatDraft = {
   projectId: string;
@@ -51,7 +51,7 @@ const agentRoleOptions = [
 
 const copy = {
   zh: {
-    private: "私有项目", overview: "概览", tasks: "任务", council: "议事厅", publish: "发布快照", feedback: "反馈", about: "关于与致谢", publicDemo: "公开体验", publicDemoCopy: "不接收 API Key、不连接 Worker，也不保存任务。完整模型协作请自行部署私有实例。", selfHostFull: "部署完整实例", runDemo: "运行示例议事",
+    private: "私有项目", overview: "概览", tasks: "任务", council: "议事厅", integrations: "集成与交付", publish: "发布快照", feedback: "反馈", about: "关于与致谢", publicDemo: "公开体验", publicDemoCopy: "不接收 API Key、不连接 Worker，也不保存任务。完整模型协作请自行部署私有实例。", selfHostFull: "部署完整实例", runDemo: "运行示例议事",
     createTask: "新建任务", run: "运行议事协议", running: "协议已完成", publishNow: "生成公开快照", preview: "打开 Vercel 预览",
     taskTitle: "任务标题", taskGoal: "完成目标", kind: "任务类型", requiredRoles: "所需席位职责", saveTask: "保存并加入任务板", savingTask: "正在加密保存", taskLoadError: "未能读取已保存的任务；当前仅显示本地草稿。", taskSaveError: "无法保存任务。", runError: "议事运行失败；未保存模拟结果。", cancel: "取消",
     project: "项目", agents: "代理席位", budget: "本次预算", toolBoundary: "工具边界", public: "公开内容", noRun: "还没有运行记录。先从一个任务开始。",
@@ -65,7 +65,7 @@ const copy = {
     agentSettings: "模型与代理", configureAgents: "配置模型与 Agent", agentSettingsTitle: "模型与 Agent 席位", agentSettingsHelp: "为项目分配模型职责与受控工具。云端密钥只发送到 Worker 加密保存。", addAgent: "添加模型或 Agent", noCustomAgents: "尚未接入自定义席位。", connected: "已连接", disabled: "已停用", enable: "启用", disable: "停用", provider: "供应商或 Agent", model: "模型", endpoint: "OpenAI 兼容 API Endpoint", role: "任务职责", seatName: "席位名称", cloudModel: "云端模型", localAgent: "本地编码 Agent", mcpTool: "MCP 工具", apiKey: "API Key", apiKeyHelp: "密钥仅用于本次提交；浏览器不保留它。云端模型需填写兼容的 HTTPS Endpoint；Worker 需要设置 ENVELOPE_KEK_BASE64 才会接受云端密钥。", saveAgent: "保存席位", savingAgent: "正在加密并保存", agentSaved: "席位已保存，可参与后续运行。", agentLoadError: "未能读取已保存的席位。", setupError: "无法保存席位。", closeAgentDialog: "关闭模型与 Agent 窗口", roleLabels: { cloud_model: "云端模型", local_coding_agent: "本地编码 Agent", mcp_tool: "MCP 工具" }, credentialLabels: { cloud_envelope: "加密云端凭据", local: "本地钥匙串", none: "无需云端凭据" }, agentsAvailable: "已启用席位可参与当前任务", feedbackContact: "反馈联络：QQ 2136493019", templateLabel: "任务模板", templateHelp: "选择模板会预填目标、验收标准、工具与最小权限；保存前都可以修改。", acceptanceHelp: "每行一个可验证的验收标准。", acceptanceRequired: "至少保留一条验收标准。", aboutEyebrow: "开源说明", aboutTitle: "为独立判断而设计", aboutLead: "Open Project Council 把多模型讨论组织成可审计的项目运行：独立方案、交叉质疑、裁决、受限执行与验证。", aboutBoundary: "独立实现与安全边界", aboutBoundaryCopy: "项目默认私有。用户的项目、密钥和产物归用户所有；开源的是平台代码，而不是用户内容。", aboutSources: "灵感与来源", aboutSourcesCopy: "我们感谢下列公开项目和技术社区提供的产品与工程启发。引用不表示合作、背书、授权或隶属关系。", viewSource: "查看来源", acknowledgement: "感谢开源社区", acknowledgementCopy: "感谢每一个公开分享多 Agent 协作、工作流编排、模型网关和本地工具实践的团队与贡献者。完整对应关系与取舍已写入仓库文档。",
   },
   en: {
-    private: "Private project", overview: "Overview", tasks: "Tasks", council: "Council", publish: "Publish snapshot", feedback: "Feedback", about: "About and thanks", publicDemo: "Public demo", publicDemoCopy: "This demo accepts no API keys, connects to no Worker, and stores no tasks. Self-host a private instance for full model collaboration.", selfHostFull: "Self-host the full app", runDemo: "Run sample council",
+    private: "Private project", overview: "Overview", tasks: "Tasks", council: "Council", integrations: "Integrations & delivery", publish: "Publish snapshot", feedback: "Feedback", about: "About and thanks", publicDemo: "Public demo", publicDemoCopy: "This demo accepts no API keys, connects to no Worker, and stores no tasks. Self-host a private instance for full model collaboration.", selfHostFull: "Self-host the full app", runDemo: "Run sample council",
     createTask: "New task", run: "Run council protocol", running: "Protocol complete", publishNow: "Create public snapshot", preview: "Open Vercel preview",
     taskTitle: "Task title", taskGoal: "Goal", kind: "Task kind", requiredRoles: "Required seat roles", saveTask: "Save to task board", savingTask: "Saving with encryption", taskLoadError: "Saved tasks could not be loaded; only a local draft is shown.", taskSaveError: "Could not save the task.", runError: "Council run failed; no simulated result was saved.", cancel: "Cancel",
     project: "Project", agents: "Agent seats", budget: "Run budget", toolBoundary: "Tool boundary", public: "Public content", noRun: "No runs yet. Start with a task.",
@@ -109,228 +109,200 @@ const statusLabel = (locale: Locale, status: string) => copy[locale][status as "
 const roleLabel = (role: string, locale: Locale) => agentRoleOptions.find((option) => option.value === role)?.[locale] ?? role;
 
 export function App() {
-  const isPublicDemo = import.meta.env.VITE_PUBLIC_DEMO === "true";
+  return import.meta.env.VITE_PUBLIC_DEMO === "true" ? <PublicDemoApp /> : <PrivateWorkspace />;
+}
+
+type ProjectEntry = { project: Project; role: ProjectRole };
+
+function PrivateWorkspace() {
   const [locale, setLocale] = useState<Locale>("zh");
-  const [view, setView] = useState<View>("overview");
-  const [tasks, setTasks] = useState<Task[]>([demoTask]);
+  const [user, setUser] = useState<User | null | undefined>(undefined);
+  const [projectEntries, setProjectEntries] = useState<ProjectEntry[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [seats, setSeats] = useState<AgentSeat[]>([]);
-  const [agentSeatLoadFailed, setAgentSeatLoadFailed] = useState(false);
-  const [selectedTaskId, setSelectedTaskId] = useState(demoTask.id);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [run, setRun] = useState<Run | null>(null);
+  const [view, setView] = useState<View>("overview");
+  const [isLoading, setIsLoading] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
   const [showComposer, setShowComposer] = useState(false);
-  const [feedback, setFeedback] = useState("");
-  const [feedbackSaved, setFeedbackSaved] = useState(false);
-  const [selection, setSelection] = useState<PublicSnapshotSelection>({ includeTask: true, includeDecision: true, includeCode: false, includePreview: true, includeDiscussionSummary: false });
-  const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null);
   const [showAgentComposer, setShowAgentComposer] = useState(false);
-  const [agentSaved, setAgentSaved] = useState(false);
-  const [taskLoadFailed, setTaskLoadFailed] = useState(false);
   const [taskSaving, setTaskSaving] = useState(false);
   const [taskSaveError, setTaskSaveError] = useState<string | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [agentSaved, setAgentSaved] = useState(false);
   const t = copy[locale];
+  const selectedProjectEntry = projectEntries.find((entry) => entry.project.id === selectedProjectId);
+  const project = selectedProjectEntry?.project;
+  const role = selectedProjectEntry?.role;
   const selectedTask = tasks.find((task) => task.id === selectedTaskId) ?? tasks[0];
   const selectedSeats = useMemo(() => seats.filter((seat) => seat.enabled), [seats]);
-  const navigation: View[] = isPublicDemo ? ["overview", "tasks", "council", "about"] : ["overview", "tasks", "council", "agents", "publish", "feedback", "about"];
+  const canEdit = role === "owner" || role === "editor";
+  const navigation: View[] = ["overview", "tasks", "council", "agents", "integrations", "about"];
 
   useEffect(() => {
-    if (isPublicDemo) return;
     let cancelled = false;
-    void fetch(`/api/tasks?projectId=${encodeURIComponent(demoProject.id)}`)
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Unable to load tasks");
-        return response.json() as Promise<{ tasks: Task[] }>;
-      })
-      .then(({ tasks: storedTasks }) => {
-        if (cancelled) return;
-        if (storedTasks.length > 0) {
-          setTasks(storedTasks);
-          setSelectedTaskId(storedTasks[0].id);
-        }
-        setTaskLoadFailed(false);
-      })
-      .catch(() => {
-        if (!cancelled) setTaskLoadFailed(true);
-      });
+    void fetch("/api/auth/me")
+      .then((response) => response.ok ? response.json() as Promise<{ user: User | null }> : Promise.reject(new Error("Unable to load session")))
+      .then(({ user: currentUser }) => { if (!cancelled) setUser(currentUser); })
+      .catch(() => { if (!cancelled) { setUser(null); setLoadError("无法连接到私有工作区服务。"); } });
     return () => { cancelled = true; };
-  }, [isPublicDemo]);
+  }, []);
 
   useEffect(() => {
-    if (isPublicDemo || selectedTaskId === demoTask.id) {
+    if (!user) { setIsLoading(false); return; }
+    let cancelled = false;
+    void fetch("/api/projects")
+      .then((response) => response.ok ? response.json() as Promise<{ projects: ProjectEntry[] }> : Promise.reject(new Error("Unable to load projects")))
+      .then(({ projects: entries }) => {
+        if (cancelled) return;
+        setProjectEntries(entries);
+        setSelectedProjectId((current) => entries.some((entry) => entry.project.id === current) ? current : entries[0]?.project.id ?? null);
+        setLoadError(null);
+      })
+      .catch(() => { if (!cancelled) setLoadError("项目列表加载失败，请重试。"); })
+      .finally(() => { if (!cancelled) setIsLoading(false); });
+    return () => { cancelled = true; };
+  }, [user]);
+
+  useEffect(() => {
+    if (!project) { setTasks([]); setSeats([]); setSelectedTaskId(null); return; }
+    let cancelled = false;
+    setLoadError(null);
+    void Promise.all([
+      fetch(`/api/tasks?projectId=${encodeURIComponent(project.id)}`).then(async (response) => { if (!response.ok) throw new Error("任务加载失败"); return response.json() as Promise<{ tasks: Task[] }>; }),
+      fetch(`/api/agent-seats?projectId=${encodeURIComponent(project.id)}`).then(async (response) => { if (!response.ok) throw new Error("席位加载失败"); return response.json() as Promise<{ seats: AgentSeat[] }>; }),
+    ]).then(([taskPayload, seatPayload]) => {
+      if (cancelled) return;
+      setTasks(taskPayload.tasks);
+      setSeats(seatPayload.seats);
+      setSelectedTaskId(taskPayload.tasks[0]?.id ?? null);
       setRun(null);
-      return;
-    }
+    }).catch((error) => { if (!cancelled) setLoadError(error instanceof Error ? error.message : "项目内容加载失败"); });
+    return () => { cancelled = true; };
+  }, [project?.id]);
+
+  useEffect(() => {
+    if (!selectedTaskId) { setRun(null); return; }
     let cancelled = false;
     void fetch(`/api/runs?taskId=${encodeURIComponent(selectedTaskId)}`)
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Unable to load runs");
-        return response.json() as Promise<{ runs: Run[] }>;
-      })
-      .then(({ runs: storedRuns }) => {
-        if (!cancelled) setRun(storedRuns[0] ?? null);
-      })
-      .catch(() => {
-        if (!cancelled) setRun(null);
-      });
+      .then(async (response) => { if (!response.ok) throw new Error("运行记录加载失败"); return response.json() as Promise<{ runs: Run[] }>; })
+      .then(({ runs }) => { if (!cancelled) setRun(runs[0] ?? null); })
+      .catch(() => { if (!cancelled) setRun(null); });
     return () => { cancelled = true; };
-  }, [isPublicDemo, selectedTaskId]);
+  }, [selectedTaskId]);
 
-  useEffect(() => {
-    if (isPublicDemo) return;
-    let cancelled = false;
-    void fetch(`/api/agent-seats?projectId=${encodeURIComponent(demoProject.id)}`)
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Unable to load agent seats");
-        return response.json() as Promise<{ seats: AgentSeat[] }>;
-      })
-      .then(({ seats: storedSeats }) => {
-        if (cancelled) return;
-        setSeats(storedSeats);
-        setAgentSeatLoadFailed(false);
-      })
-      .catch(() => {
-        if (!cancelled) setAgentSeatLoadFailed(true);
-      });
-    return () => { cancelled = true; };
-  }, [isPublicDemo]);
-
-  async function saveTask(draft: TaskDraft) {
-    const response = await fetch("/api/tasks", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ projectId: demoProject.id, ...draft }),
-    });
-    const payload = await response.json() as { task?: Task; error?: string };
-    if (!response.ok || !payload.task) throw new Error(payload.error ?? t.taskSaveError);
-    return payload.task;
+  async function createProject(name: string, description: string) {
+    const response = await fetch("/api/projects", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name, description }) });
+    const payload = await response.json() as { project?: Project; error?: string };
+    if (!response.ok || !payload.project) throw new Error(payload.error ?? "无法创建项目");
+    const entry = { project: payload.project, role: "owner" as const };
+    setProjectEntries((current) => [entry, ...current]);
+    setSelectedProjectId(entry.project.id);
   }
 
   async function addTask(draft: TaskDraft) {
-    if (!draft.title || !draft.goal || draft.acceptanceCriteria.length === 0 || taskSaving) return;
-    setTaskSaving(true);
-    setTaskSaveError(null);
+    if (!project || taskSaving) return;
+    setTaskSaving(true); setTaskSaveError(null);
     try {
-      const task = await saveTask(draft);
-      setTasks((current) => [task, ...current.filter((currentTask) => currentTask.id !== task.id)]);
-      setSelectedTaskId(task.id);
-      setShowComposer(false);
-      setView("tasks");
-    } catch (error) {
-      setTaskSaveError(error instanceof Error ? error.message : t.taskSaveError);
-    } finally {
-      setTaskSaving(false);
-    }
+      const response = await fetch("/api/tasks", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...draft, projectId: project.id }) });
+      const payload = await response.json() as { task?: Task; error?: string };
+      if (!response.ok || !payload.task) throw new Error(payload.error ?? "任务保存失败");
+      setTasks((current) => [payload.task!, ...current]); setSelectedTaskId(payload.task.id); setShowComposer(false); setView("tasks");
+    } catch (error) { setTaskSaveError(error instanceof Error ? error.message : "任务保存失败"); } finally { setTaskSaving(false); }
   }
 
   async function runCouncil() {
-    if (!selectedTask || isRunning) return;
-    setIsRunning(true);
-    setRunError(null);
-    let taskForRun = selectedTask;
-    if (isPublicDemo) {
-      const demoRun = createProtocolRun({ ...selectedTask, status: "processing" }, []);
-      setRun(demoRun);
-      setTasks((current) => current.map((task) => task.id === selectedTask.id ? { ...task, status: "ready" } : task));
-      setIsRunning(false);
-      setView("council");
-      return;
-    }
+    if (!selectedTask || isRunning || !canEdit) return;
+    setIsRunning(true); setRunError(null);
     try {
-      if (taskForRun.id === demoTask.id) {
-        const { id: _id, projectId: _projectId, status: _status, createdAt: _createdAt, ...draft } = taskForRun;
-        const savedTask = await saveTask(draft);
-        taskForRun = savedTask;
-        setTasks((current) => current.map((task) => task.id === selectedTask.id ? savedTask : task));
-        setSelectedTaskId(savedTask.id);
-      }
-      setTasks((current) => current.map((task) => task.id === taskForRun.id ? { ...task, status: "processing" } : task));
-      const response = await fetch("/api/runs/execute", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ taskId: taskForRun.id, seatIds: selectedSeats.map((seat) => seat.id) }),
-      });
+      const response = await fetch("/api/runs/execute", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ taskId: selectedTask.id, seatIds: selectedSeats.map((seat) => seat.id) }) });
       const payload = await response.json() as { run?: Run; error?: string };
-      if (!response.ok || !payload.run) throw new Error(payload.error ?? "Could not execute council run");
-      setRun(payload.run);
-      setTasks((current) => current.map((task) => task.id === taskForRun.id ? { ...task, status: "ready" } : task));
-      setView("council");
-    } catch (error) {
-      setRunError(error instanceof Error ? error.message : t.runError);
-      setTasks((current) => current.map((task) => task.id === taskForRun.id ? { ...task, status: "draft" } : task));
-    } finally {
-      setIsRunning(false);
-    }
+      if (!response.ok || !payload.run) throw new Error(payload.error ?? "议事运行失败");
+      setRun(payload.run); setTasks((current) => current.map((task) => task.id === selectedTask.id ? { ...task, status: "ready" } : task)); setView("council");
+    } catch (error) { setRunError(error instanceof Error ? error.message : "议事运行失败"); } finally { setIsRunning(false); }
   }
 
-  function publishSnapshot() {
-    const snapshot = createPublicSnapshot({
-      id: `snapshot-${Date.now()}`,
-      projectId: demoProject.id,
-      slug: `${demoProject.name.toLowerCase()}-${Date.now()}`,
-      selection,
-      rawContent: {
-        task: selection.includeTask ? selectedTask.goal : "",
-        decision: selection.includeDecision ? run?.messages.find((message) => message.phase === "decision")?.content ?? "尚未裁决" : "",
-        code: selection.includeCode ? "// Code is selected for publishing.\nconst visibility = 'owner-controlled';" : "",
-        preview: selection.includePreview ? "https://vercel.com/preview/example" : "",
-        discussion: selection.includeDiscussionSummary ? run?.messages.map((message) => message.content).join("\n") ?? "" : "",
-      },
-    });
-    setSnapshotUrl(`/snapshots/${snapshot.slug}`);
-  }
-
-  function addAgentSeat(seat: AgentSeat) {
-    setSeats((current) => [seat, ...current.filter((currentSeat) => currentSeat.id !== seat.id)]);
-    setAgentSeatLoadFailed(false);
-    setAgentSaved(true);
-    setShowAgentComposer(false);
-    setView("agents");
+  async function addAgentSeat(seat: AgentSeat) {
+    setSeats((current) => [seat, ...current.filter((item) => item.id !== seat.id)]); setAgentSaved(true); setShowAgentComposer(false); setView("agents");
   }
 
   async function toggleManagedSeat(seat: AgentSeat) {
-    const response = await fetch(`/api/agent-seats/${encodeURIComponent(seat.id)}`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ enabled: !seat.enabled }),
-    });
+    const response = await fetch(`/api/agent-seats/${encodeURIComponent(seat.id)}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ enabled: !seat.enabled }) });
     const payload = await response.json() as { seat?: AgentSeat; error?: string };
-    if (!response.ok || !payload.seat) throw new Error(payload.error ?? t.setupError);
-    setSeats((current) => current.map((currentSeat) => currentSeat.id === payload.seat?.id ? payload.seat : currentSeat));
+    if (!response.ok || !payload.seat) throw new Error(payload.error ?? "席位更新失败");
+    setSeats((current) => current.map((item) => item.id === payload.seat?.id ? payload.seat : item));
   }
 
-  return (
-    <main className="app-shell">
-      <aside className="sidebar">
-        <div className="brand"><span className="brand-mark">◌</span><div><strong>Open Project Council</strong><small>multi-model workspace</small></div></div>
-        <div className="project-chip"><span className="visibility-dot" />{t.private}</div>
-        <nav aria-label="Workspace navigation">
-          {navigation.map((item) => (
-            <button key={item} className={`nav-item ${view === item ? "active" : ""}`} onClick={() => setView(item)}>{item === "agents" ? t.agentSettings : t[item]}</button>
-          ))}
-        </nav>
-        <div className="sidebar-bottom"><button className="language-button" onClick={() => setLocale(locale === "zh" ? "en" : "zh")}>{locale === "zh" ? "中文 / EN" : "EN / 中文"}</button><p>Apache-2.0<br />Your project stays yours.</p></div>
-      </aside>
+  async function signOut() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    setUser(null); setProjectEntries([]); setSelectedProjectId(null);
+  }
 
-      <section className="workspace">
-        <header className="topbar"><div><p className="eyebrow">{t.project}</p><h1>{demoProject.name}</h1><p className="subtle">{demoProject.description}</p></div><div className="topbar-actions">{isPublicDemo ? <><span className="demo-pill">{t.publicDemo}</span><a className="button secondary" href="https://github.com/hue913/open-project-council" target="_blank" rel="noreferrer">{t.selfHostFull}</a></> : <><span className="repo-pill">⌘ {demoProject.linkedRepository?.fullName}</span><button className="button secondary" onClick={() => { setAgentSaved(false); setShowAgentComposer(true); }}>{t.configureAgents}</button></>}<button className="button secondary" onClick={() => { setTaskSaveError(null); setShowComposer(true); }}>{t.createTask}</button><button className="button primary" onClick={runCouncil} disabled={isRunning}>{isRunning ? t.processing : isPublicDemo ? t.runDemo : t.run}</button></div></header>
-        {isPublicDemo && <section className="demo-notice"><strong>{t.publicDemo}</strong><span>{t.publicDemoCopy}</span></section>}
-        {taskLoadFailed && <p className="form-error" role="alert">{t.taskLoadError}</p>}
-        {runError && <p className="form-error" role="alert">{t.runError} {runError}</p>}
+  if (isLoading || user === undefined) return <main className="auth-screen"><section className="auth-card"><span className="brand-mark">◌</span><p>正在验证私有工作区会话…</p></section></main>;
+  if (!user) return <LoginScreen error={loadError} />;
+  if (!project) return <ProjectLauncher user={user} error={loadError} onCreate={createProject} onSignOut={signOut} />;
 
-        {showComposer && <TaskComposer t={t} locale={locale} isSaving={taskSaving} saveError={taskSaveError} onCancel={() => setShowComposer(false)} onSave={addTask} />}
-        {showAgentComposer && <AgentComposer t={t} locale={locale} onCancel={() => setShowAgentComposer(false)} onSave={addAgentSeat} />}
+  function updateProject(updated: Project) {
+    setProjectEntries((current) => current.map((entry) => entry.project.id === updated.id ? { ...entry, project: updated } : entry));
+  }
 
-        {view === "overview" && <Overview t={t} locale={locale} task={selectedTask} run={run} seatCount={selectedSeats.length} isRunning={isRunning} isPublicDemo={isPublicDemo} onOpenTasks={() => setView("tasks")} onOpenCouncil={run ? () => setView("council") : runCouncil} />}
-        {view === "tasks" && <TaskBoard t={t} locale={locale} tasks={tasks} selectedId={selectedTaskId} isRunning={isRunning} isPublicDemo={isPublicDemo} onSelect={setSelectedTaskId} onRun={runCouncil} />}
-        {view === "council" && <CouncilView t={t} run={run} />}
-        {view === "agents" && <AgentSeatsView t={t} locale={locale} seats={seats} loadFailed={agentSeatLoadFailed} saved={agentSaved} onAdd={() => { setAgentSaved(false); setShowAgentComposer(true); }} onToggle={toggleManagedSeat} />}
-        {view === "publish" && <PublishView t={t} selection={selection} setSelection={setSelection} snapshotUrl={snapshotUrl} onPublish={publishSnapshot} />}
-        {view === "feedback" && <FeedbackView t={t} feedback={feedback} setFeedback={setFeedback} saved={feedbackSaved} onSave={() => { setFeedbackSaved(true); setFeedback(""); }} />}
-        {view === "about" && <AboutView t={t} locale={locale} />}
-      </section>
-    </main>
-  );
+  return <main className="app-shell">
+    <aside className="sidebar"><div className="brand"><span className="brand-mark">◌</span><div><strong>Open Project Council</strong><small>multi-model workspace</small></div></div><div className="project-chip"><span className="visibility-dot" />{t.private} · {role}</div><nav aria-label="Workspace navigation">{navigation.map((item) => <button key={item} className={`nav-item ${view === item ? "active" : ""}`} onClick={() => setView(item)}>{item === "agents" ? t.agentSettings : t[item]}</button>)}</nav><div className="sidebar-bottom"><button className="language-button" onClick={() => setLocale(locale === "zh" ? "en" : "zh")}>{locale === "zh" ? "中文 / EN" : "EN / 中文"}</button><button className="signout-button" onClick={() => void signOut()}>@{user.login} · 退出</button><p>Apache-2.0<br />Your project stays yours.</p></div></aside>
+    <section className="workspace"><header className="topbar"><div><p className="eyebrow">{t.project}</p><h1>{project.name}</h1><p className="subtle">{project.description || "私有协作项目"}</p></div><div className="topbar-actions"><select className="project-switcher" aria-label="切换项目" value={project.id} onChange={(event) => setSelectedProjectId(event.target.value)}>{projectEntries.map((entry) => <option value={entry.project.id} key={entry.project.id}>{entry.project.name} · {entry.role}</option>)}</select>{canEdit && <><button className="button secondary" onClick={() => { setAgentSaved(false); setShowAgentComposer(true); }}>{t.configureAgents}</button><button className="button secondary" onClick={() => { setTaskSaveError(null); setShowComposer(true); }}>{t.createTask}</button></>}<button className="button primary" onClick={runCouncil} disabled={!selectedTask || !canEdit || isRunning || selectedSeats.length === 0}>{isRunning ? t.processing : t.run}</button></div></header>{loadError && <p className="form-error" role="alert">{loadError}</p>}{runError && <p className="form-error" role="alert">{runError}</p>}{showComposer && <TaskComposer t={t} locale={locale} isSaving={taskSaving} saveError={taskSaveError} onCancel={() => setShowComposer(false)} onSave={addTask} />}{showAgentComposer && <AgentComposer projectId={project.id} t={t} locale={locale} onCancel={() => setShowAgentComposer(false)} onSave={(seat) => void addAgentSeat(seat)} />}{view === "integrations" ? <IntegrationsView project={project} role={role!} seats={seats} onProjectUpdated={updateProject} /> : !selectedTask ? <EmptyWorkspace canEdit={canEdit} onCreate={() => setShowComposer(true)} /> : <>{view === "overview" && <Overview t={t} locale={locale} task={selectedTask} run={run} seatCount={selectedSeats.length} isRunning={isRunning} isPublicDemo={false} onOpenTasks={() => setView("tasks")} onOpenCouncil={run ? () => setView("council") : runCouncil} />}{view === "tasks" && <TaskBoard t={t} locale={locale} tasks={tasks} selectedId={selectedTaskId ?? ""} isRunning={isRunning} isPublicDemo={false} onSelect={setSelectedTaskId} onRun={runCouncil} />}{view === "council" && <CouncilView t={t} run={run} />}{view === "agents" && <AgentSeatsView t={t} locale={locale} seats={seats} loadFailed={false} saved={agentSaved} onAdd={() => { setAgentSaved(false); setShowAgentComposer(true); }} onToggle={toggleManagedSeat} />}{view === "about" && <AboutView t={t} locale={locale} />}</>}</section>
+  </main>;
+}
+
+function LoginScreen({ error }: { error: string | null }) {
+  return <main className="auth-screen"><section className="auth-card"><span className="brand-mark">◌</span><p className="eyebrow">PRIVATE WORKSPACE</p><h1>Open Project Council</h1><p>使用 GitHub 登录后创建私有项目。项目成员、模型凭据和运行记录均按项目隔离。</p><button className="button primary" onClick={() => { window.location.assign(`/api/auth/github/start?returnTo=${encodeURIComponent(window.location.origin + "/")}`); }}>使用 GitHub 登录</button>{error && <p className="form-error" role="alert">{error}</p>}</section></main>;
+}
+
+function ProjectLauncher({ user, error, onCreate, onSignOut }: { user: User; error: string | null; onCreate: (name: string, description: string) => Promise<void>; onSignOut: () => Promise<void> }) {
+  const [name, setName] = useState(""); const [description, setDescription] = useState(""); const [pending, setPending] = useState(false); const [formError, setFormError] = useState<string | null>(null);
+  async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); if (!name.trim()) return; setPending(true); setFormError(null); try { await onCreate(name.trim(), description.trim()); } catch (cause) { setFormError(cause instanceof Error ? cause.message : "无法创建项目"); } finally { setPending(false); } }
+  return <main className="auth-screen"><form className="auth-card project-launcher" onSubmit={(event) => void submit(event)}><span className="brand-mark">◌</span><p className="eyebrow">@{user.login}</p><h1>创建你的第一个私有项目</h1><p>项目默认私有，只会向你明确加入的成员开放。</p><label>项目名称<input value={name} onChange={(event) => setName(event.target.value)} maxLength={160} required autoFocus /></label><label>项目说明（可选）<textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={1000} rows={3} /></label>{(formError ?? error) && <p className="form-error" role="alert">{formError ?? error}</p>}<div className="auth-actions"><button type="button" className="button secondary" onClick={() => void onSignOut()} disabled={pending}>退出</button><button className="button primary" disabled={pending}>{pending ? "正在创建…" : "创建私有项目"}</button></div></form></main>;
+}
+
+function EmptyWorkspace({ canEdit, onCreate }: { canEdit: boolean; onCreate: () => void }) {
+  return <section className="empty-panel"><p className="eyebrow">TASKS</p><h2>{canEdit ? "从一项可验证任务开始" : "该项目还没有任务"}</h2><p>{canEdit ? "选择任务预设后，系统会按该任务的最小权限和验收标准创建真实记录。" : "你有只读权限，等待项目编辑者创建任务。"}</p>{canEdit && <button className="button primary" onClick={onCreate}>新建任务</button>}</section>;
+}
+
+function IntegrationsView({ project, role, seats, onProjectUpdated }: { project: Project; role: ProjectRole; seats: AgentSeat[]; onProjectUpdated: (project: Project) => void }) {
+  const [repository, setRepository] = useState(project.linkedRepository?.fullName ?? "");
+  const [vercelToken, setVercelToken] = useState("");
+  const [vercelProject, setVercelProject] = useState(project.vercelConnection?.projectName ?? "");
+  const [ref, setRef] = useState(project.linkedRepository?.defaultBranch ?? "main");
+  const [branch, setBranch] = useState("council/change");
+  const [title, setTitle] = useState("Council change");
+  const [filePath, setFilePath] = useState("README.md");
+  const [fileContent, setFileContent] = useState("");
+  const [confirmProduction, setConfirmProduction] = useState(false);
+  const [pending, setPending] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [pairing, setPairing] = useState<{ id: string; token: string; expiresAt: string; workerUrl: string } | null>(null);
+  const owner = role === "owner";
+  const localSeats = seats.filter((seat) => seat.kind === "local_coding_agent");
+
+  async function request<T>(action: string, path: string, body: unknown): Promise<T> {
+    setPending(action); setError(null); setNotice(null);
+    try {
+      const response = await fetch(path, { method: action === "repository" || action === "vercel" ? "PATCH" : "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+      const payload = await response.json() as T & { error?: string };
+      if (!response.ok) throw new Error(payload.error ?? "操作失败");
+      return payload;
+    } catch (cause) { const message = cause instanceof Error ? cause.message : "操作失败"; setError(message); throw cause; } finally { setPending(null); }
+  }
+
+  async function linkRepository(event: FormEvent<HTMLFormElement>) { event.preventDefault(); try { const payload = await request<{ project: Project }>("repository", `/api/projects/${encodeURIComponent(project.id)}/repository`, { fullName: repository }); onProjectUpdated(payload.project); setRef(payload.project.linkedRepository?.defaultBranch ?? ref); setNotice("GitHub 仓库已验证并关联。"); } catch { /* keep input for correction */ } }
+  async function connectVercel(event: FormEvent<HTMLFormElement>) { event.preventDefault(); try { const payload = await request<{ project: Project }>("vercel", `/api/projects/${encodeURIComponent(project.id)}/vercel`, { token: vercelToken, projectName: vercelProject || undefined }); onProjectUpdated(payload.project); setVercelToken(""); setNotice("Vercel 令牌已加密保存。"); } catch { /* keep input for correction */ } }
+  async function createPairing() { try { const payload = await request<{ pairing: { id: string; token: string; expiresAt: string; workerUrl: string } }>("pairing", `/api/projects/${encodeURIComponent(project.id)}/local-agent-pairings`, {}); setPairing(payload.pairing); setNotice("一次性桌面配对码已生成。离开此页后请重新生成。 "); } catch { /* keep existing form state */ } }
+  async function createPullRequest(event: FormEvent<HTMLFormElement>) { event.preventDefault(); try { const payload = await request<{ delivery: { url: string } }>("pr", `/api/projects/${encodeURIComponent(project.id)}/deliveries/github-pr`, { branch, title, changes: [{ path: filePath, content: fileContent }] }); setNotice(`GitHub PR 已创建：${payload.delivery.url}`); } catch { /* preserve requested change */ } }
+  async function deploy(target: "preview" | "production") { try { const payload = await request<{ delivery: { url: string } }>(target, `/api/projects/${encodeURIComponent(project.id)}/deliveries/vercel-${target}`, { ref, ...(target === "production" ? { confirm: confirmProduction } : {}) }); setNotice(`${target === "preview" ? "预览" : "生产"}部署已创建：${payload.delivery.url}`); } catch { /* preserve deployment input */ } }
+
+  return <section className="integrations-layout"><div className="settings-heading"><div><p className="eyebrow">INTEGRATIONS</p><h2>集成与交付</h2><p>连接凭据以加密形式保存。所有外部写操作都会记入项目审计记录。</p></div><span className={`status ${owner ? "ready" : "queued"}`}>{owner ? "所有者可配置" : "只读集成状态"}</span></div>{notice && <p className="success">{notice}</p>}{error && <p className="form-error" role="alert">{error}</p>}<div className="integration-grid"><article className="panel integration-card"><p className="eyebrow">GITHUB</p><h3>仓库与 PR</h3><p>{project.linkedRepository ? `已关联 ${project.linkedRepository.fullName} · ${project.linkedRepository.defaultBranch}` : "关联后才可创建受审计的分支和 PR。"}</p>{owner && <><form onSubmit={(event) => void linkRepository(event)}><label>GitHub 仓库（owner/name）<input value={repository} onChange={(event) => setRepository(event.target.value)} required /></label><button className="button secondary" disabled={pending !== null}>{pending === "repository" ? "正在验证…" : "关联仓库"}</button></form>{project.linkedRepository && <form onSubmit={(event) => void createPullRequest(event)} className="delivery-form"><label>分支<input value={branch} onChange={(event) => setBranch(event.target.value)} required /></label><label>PR 标题<input value={title} onChange={(event) => setTitle(event.target.value)} required /></label><label>文件路径<input value={filePath} onChange={(event) => setFilePath(event.target.value)} required /></label><label>文件内容<textarea value={fileContent} onChange={(event) => setFileContent(event.target.value)} rows={5} required /></label><button className="button primary" disabled={pending !== null}>{pending === "pr" ? "正在创建 PR…" : "创建 GitHub PR"}</button></form>}</>}</article><article className="panel integration-card"><p className="eyebrow">VERCEL</p><h3>预览与生产</h3><p>{project.vercelConnection ? "Vercel 已连接；令牌不会再次显示。" : "添加项目级 Vercel 令牌后可创建预览。"}</p>{owner && <><form onSubmit={(event) => void connectVercel(event)}><label>Vercel Token<input type="password" autoComplete="new-password" value={vercelToken} onChange={(event) => setVercelToken(event.target.value)} required /></label><label>Vercel 项目名（可选）<input value={vercelProject} onChange={(event) => setVercelProject(event.target.value)} /></label><button className="button secondary" disabled={pending !== null}>{pending === "vercel" ? "正在加密…" : project.vercelConnection ? "更新 Vercel 连接" : "连接 Vercel"}</button></form>{project.vercelConnection && project.linkedRepository && <div className="delivery-form"><label>Git ref<input value={ref} onChange={(event) => setRef(event.target.value)} required /></label><button className="button secondary" onClick={() => void deploy("preview")} disabled={pending !== null}>{pending === "preview" ? "正在创建预览…" : "创建 Vercel 预览"}</button><label className="confirm-production"><input type="checkbox" checked={confirmProduction} onChange={(event) => setConfirmProduction(event.target.checked)} />我确认将此 ref 部署到生产环境</label><button className="button primary" onClick={() => void deploy("production")} disabled={pending !== null || !confirmProduction}>{pending === "production" ? "正在部署…" : "部署到生产"}</button></div>}</>}</article><article className="panel integration-card"><p className="eyebrow">LOCAL AGENT</p><h3>桌面桥接</h3><p>本地路径和订阅凭据仅保存在桌面端钥匙串。Worker 只保留短时作业和桥接标识。</p>{owner && <>{localSeats.length === 0 ? <p className="form-help">请先在“模型与代理”创建 Codex 或 Claude 本地席位。</p> : <button className="button secondary" onClick={() => void createPairing()} disabled={pending !== null}>{pending === "pairing" ? "正在生成…" : "生成桌面配对码"}</button>}{pairing && <div className="pairing-output"><strong>一次性配对码</strong><code>{pairing.id}</code><code>{pairing.token}</code><small>过期：{new Date(pairing.expiresAt).toLocaleString()}。在桌面端选择席位和本地工作目录后完成配对。</small></div>}</>}</article></div></section>;
 }
 
 function Overview({ t, locale, task, run, seatCount, isRunning, isPublicDemo, onOpenTasks, onOpenCouncil }: { t: Translation; locale: Locale; task: Task; run: Run | null; seatCount: number; isRunning: boolean; isPublicDemo: boolean; onOpenTasks: () => void; onOpenCouncil: () => void }) {
@@ -393,7 +365,7 @@ function AgentSeatsView({ t, locale, seats, loadFailed, saved, onAdd, onToggle }
   </section>;
 }
 
-function AgentComposer({ t, locale, onCancel, onSave }: { t: Translation; locale: Locale; onCancel: () => void; onSave: (seat: AgentSeat) => void }) {
+function AgentComposer({ projectId, t, locale, onCancel, onSave }: { projectId: string; t: Translation; locale: Locale; onCancel: () => void; onSave: (seat: AgentSeat) => void }) {
   const [kind, setKind] = useState<AgentKind>("cloud_model");
   const [name, setName] = useState("OpenAI · 架构");
   const [provider, setProvider] = useState("OpenAI");
@@ -430,7 +402,7 @@ function AgentComposer({ t, locale, onCancel, onSave }: { t: Translation; locale
     event.preventDefault();
     setIsSaving(true);
     setError(null);
-    const draft: AgentSeatDraft = { projectId: demoProject.id, name, kind, provider, model, endpoint, role, ...(kind === "cloud_model" ? { apiKey } : {}) };
+    const draft: AgentSeatDraft = { projectId, name, kind, provider, model, endpoint, role, ...((kind === "cloud_model" || kind === "mcp_tool") && apiKey ? { apiKey } : {}) };
     try {
       const response = await fetch("/api/agent-seats", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(draft) });
       const payload = await response.json() as { seat?: AgentSeat; error?: string };
@@ -449,6 +421,8 @@ function AgentComposer({ t, locale, onCancel, onSave }: { t: Translation; locale
     { value: "local_coding_agent", label: t.localAgent },
     { value: "mcp_tool", label: t.mcpTool },
   ];
+  const nativeProvider = /^(anthropic|claude|gemini|google)$/i.test(provider.trim());
+  const acceptsSecret = kind === "cloud_model" || kind === "mcp_tool";
 
   return <div className="composer-backdrop" role="presentation"><form className="task-composer agent-composer" role="dialog" aria-modal="true" aria-label={t.addAgent} autoComplete="off" onSubmit={(event) => void submit(event)}>
     <div className="composer-header"><div><p className="eyebrow">{t.agentSettings}</p><h2>{t.addAgent}</h2></div><button type="button" className="close-button" aria-label={t.closeAgentDialog} onClick={onCancel}>×</button></div>
@@ -457,20 +431,12 @@ function AgentComposer({ t, locale, onCancel, onSave }: { t: Translation; locale
       <label htmlFor="agent-name">{t.seatName}<input id="agent-name" value={name} onChange={(event) => setName(event.target.value)} required /></label>
       <label htmlFor="agent-provider">{t.provider}<input id="agent-provider" value={provider} onChange={(event) => setProvider(event.target.value)} required /></label>
       <div className="agent-form-grid"><label htmlFor="agent-model">{t.model}<input id="agent-model" value={model} onChange={(event) => setModel(event.target.value)} /></label><label htmlFor="agent-role">{t.role}<select id="agent-role" value={role} onChange={(event) => setRole(event.target.value)}>{agentRoleOptions.map((option) => <option value={option.value} key={option.value}>{option[locale]}</option>)}</select></label></div>
-      {kind === "cloud_model" && <><label htmlFor="agent-endpoint">{t.endpoint}<input id="agent-endpoint" inputMode="url" placeholder="https://api.example.com/v1" value={endpoint} onChange={(event) => setEndpoint(event.target.value)} required /></label><label htmlFor="agent-key">{t.apiKey}<input id="agent-key" name="model-api-key" type="password" autoComplete="new-password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} required /></label><p className="secure-note">{t.apiKeyHelp}</p></>}
+      {((kind === "cloud_model" && !nativeProvider) || kind === "mcp_tool") && <label htmlFor="agent-endpoint">{kind === "mcp_tool" ? "MCP Streamable HTTP Endpoint" : t.endpoint}<input id="agent-endpoint" inputMode="url" placeholder="https://api.example.com/v1" value={endpoint} onChange={(event) => setEndpoint(event.target.value)} required /></label>}
+      {acceptsSecret && <><label htmlFor="agent-key">{kind === "mcp_tool" ? "MCP 访问令牌（可选）" : t.apiKey}<input id="agent-key" name="model-api-key" type="password" autoComplete="new-password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} required={kind === "cloud_model"} /></label><p className="secure-note">{t.apiKeyHelp}</p></>}
       {error && <p className="form-error" role="alert">{error}</p>}
     </div>
     <div className="composer-actions"><button type="button" className="button secondary" onClick={onCancel} disabled={isSaving}>{t.cancel}</button><button className="button primary" type="submit" disabled={isSaving}>{isSaving ? t.savingAgent : t.saveAgent}</button></div>
   </form></div>;
-}
-
-function PublishView({ t, selection, setSelection, snapshotUrl, onPublish }: { t: Translation; selection: PublicSnapshotSelection; setSelection: (selection: PublicSnapshotSelection) => void; snapshotUrl: string | null; onPublish: () => void }) {
-  const keys = Object.keys(selection) as (keyof PublicSnapshotSelection)[];
-  return <section className="publish-layout"><div className="panel"><p className="eyebrow">{t.snapshot.toUpperCase()}</p><h2>{t.snapshot}</h2><p>{t.snapshotHelp}</p><div className="selection-list">{keys.map((key, index) => <label key={key}><input type="checkbox" checked={selection[key]} onChange={(event) => setSelection({ ...selection, [key]: event.target.checked })} /><span>{t.selections[index]}</span></label>)}</div><button className="button primary" onClick={onPublish} disabled={!Object.values(selection).some(Boolean)}>{t.publishNow}</button></div><aside className="snapshot-preview"><p className="eyebrow">{t.safePublishCheck}</p><h3>{t.scanSummary}</h3><p>{t.scanHelp}</p>{snapshotUrl && <a href={snapshotUrl} onClick={(event) => event.preventDefault()}>✓ {snapshotUrl}</a>}</aside></section>;
-}
-
-function FeedbackView({ t, feedback, setFeedback, saved, onSave }: { t: Translation; feedback: string; setFeedback: (value: string) => void; saved: boolean; onSave: () => void }) {
-  return <section className="feedback-layout"><div className="panel"><p className="eyebrow">{t.feedback}</p><h2>{t.feedbackTitle}</h2><p>{t.feedbackHelp}</p><p className="feedback-contact">{t.feedbackContact}</p><textarea value={feedback} placeholder={t.feedbackPlaceholder} onChange={(event) => { setFeedback(event.target.value); }} rows={7} /><button className="button primary" onClick={onSave} disabled={!feedback.trim()}>{t.sendFeedback}</button>{saved && <p className="success">✓ {t.saved}</p>}</div></section>;
 }
 
 function AboutView({ t, locale }: { t: Translation; locale: Locale }) {

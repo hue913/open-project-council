@@ -1,4 +1,19 @@
 services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-council}
+      POSTGRES_USER: ${POSTGRES_USER:-council}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - council_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
   web:
     build:
       context: .
@@ -27,10 +42,17 @@ services:
     environment:
       APP_URL: ${APP_URL:-http://localhost:5173}
       WORKER_PORT: 8787
-      WORKER_DATA_PATH: /data/worker-state.json
+      DATABASE_URL: postgresql://${POSTGRES_USER:-council}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-council}
+      KMS_PROVIDER: ${KMS_PROVIDER:-local}
       ENVELOPE_KEK_BASE64: ${ENVELOPE_KEK_BASE64:?Set ENVELOPE_KEK_BASE64 in .env}
+      VAULT_ADDR: ${VAULT_ADDR:-}
+      VAULT_TOKEN: ${VAULT_TOKEN:-}
+      VAULT_TRANSIT_KEY: ${VAULT_TRANSIT_KEY:-}
     volumes:
       - council_data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:8787/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 10s
@@ -40,3 +62,4 @@ services:
 
 volumes:
   council_data:
+  council_postgres:

@@ -2,6 +2,22 @@
 
 遵循 Keep a Changelog 风格。
 
+## 0.2.0 - 2026-08-08
+
+### Added
+
+- GitHub OAuth（PKCE、state 校验、HttpOnly 会话）以及私有项目的 `owner`、`editor`、`viewer` 成员隔离。
+- PostgreSQL 状态存储适配器、Vault Transit KMS 适配器、项目审计记录和 Compose 中的 PostgreSQL 服务。
+- 原生 Anthropic Messages 与 Gemini `generateContent` 连接器，MCP Streamable HTTP 工具调用。
+- GitHub 仓库关联、受审计 PR 创建、Vercel 预览与带所有者确认的生产部署接口。
+- 可打包的 Tauri 桌面桥接：钥匙串存储、一次性配对、主动领取作业、Codex / Claude Code 受限实际执行与撤销授权。
+- 真实登录/项目工作区和“集成与交付”页面；不再将完整模式绑定到演示项目。
+
+### Security
+
+- 席位元数据、项目、任务、运行、授权事务和审计正文均在写入持久层前进入信封加密工作区；凭据明文不返回浏览器。
+- 本地工作目录与订阅会话只保存在桌面钥匙串，不上传到 Worker；生产部署缺少当次所有者确认会被拒绝。
+
 ## 0.1.0-alpha.4 - 2026-08-08
 
 ### Added

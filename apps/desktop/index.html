@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light" />
+    <title>Open Project Council Desktop</title>
+  </head>
+  <body>
+    <main class="desktop-shell">
+      <header>
+        <div><p>LOCAL EXECUTION BRIDGE</p><h1>Open Project Council</h1></div>
+        <button id="inspect" type="button">检测本地 Agent</button>
+      </header>
+      <section class="agent-status" id="agent-status" aria-live="polite">正在等待检测。</section>
+      <section class="panel">
+        <p>PAIRING</p><h2>连接私有项目</h2>
+        <form id="pairing-form">
+          <label>Worker 地址<input id="worker-url" name="workerUrl" type="url" placeholder="https://council.example.com" required /></label>
+          <label>一次性配对 ID<input id="pairing-id" name="pairingId" required /></label>
+          <label>一次性配对令牌<input id="pairing-token" name="pairingToken" type="password" autoComplete="off" required /></label>
+          <label>本地席位 ID<input id="seat-id" name="seatId" placeholder="seat-..." required /></label>
+          <label>本地 Agent<select id="agent" name="agent"><option value="codex">Codex</option><option value="claude">Claude Code</option></select></label>
+          <label>获授权的本地工作目录<input id="workspace-path" name="workspacePath" type="text" placeholder="/absolute/path/to/project" required /></label>
+          <button type="submit">安全连接</button>
+        </form>
+      </section>
+      <section class="panel controls">
+        <p>RUNNER</p><h2>领取已授权作业</h2>
+        <label>已连接项目<select id="known-projects"><option value="">选择已连接项目</option></select></label>
+        <p id="connection-state">尚未连接项目。</p>
+        <div><button id="run-next" type="button" disabled>运行下一项作业</button><button id="revoke" type="button" disabled>撤销本地授权</button></div>
+      </section>
+      <p class="message" id="message" role="status"></p>
+    </main>
+    <script type="module" src="/src/desktop-app.ts"></script>
+  </body>
+</html>

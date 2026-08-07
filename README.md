@@ -2,20 +2,25 @@
 
 一个 Apache-2.0 开源的多模型项目工作台。它让多个已授权的模型先独立提出方案，再进行质疑和裁决；不同意见会保留为风险，而不是被伪造成共识。
 
-## 当前可用范围
+## 正式功能范围
 
-这是面向单个所有者、自托管使用的 Alpha。
+这是可自托管的私有多用户工作台。公开源码采用 Apache-2.0；你的项目、密钥、运行记录和交付物不会因为源码公开而公开。
 
-- 接入任意 OpenAI 兼容 HTTPS Endpoint，并为每个模型分配任务职责。
+- 通过 GitHub OAuth 登录，使用 HttpOnly 会话 Cookie、PKCE、state 校验和加密 OAuth Token 保存登录态。
+- 项目成员以 `owner`、`editor`、`viewer` 隔离；所有任务、运行、席位、凭据、交付和审计记录都先校验项目成员资格。
+- 接入 OpenAI 兼容 API、原生 Anthropic Messages API 与原生 Gemini `generateContent` API，并为每个模型分配任务职责。
 - 对数学、编程、代码审查、安全审计、研究、数据分析、产品规划、技术写作和网页设计任务执行“独立方案 → 质疑 → 裁决”协议。
 - 提供 20 个可编辑任务预设，覆盖证明、调试、重构、研究比较、实验分析、威胁建模、产品发现、API 文档和响应式审查；每个预设都带有验收标准与最小权限边界。
 - 接入任意 OpenAI 兼容 HTTPS Endpoint 后，Worker 会实际调用已选云模型完成独立方案、质疑和裁决；调用失败不会伪造成功运行。
 - 云端 API Key、任务和运行记录采用 AES-256-GCM 信封加密；API Key 不会被浏览器持久化，模型输入、输出和公开快照会经过敏感信息脱敏。
-- Worker 将加密的席位、任务和运行档案保存在本地数据文件或 Docker 数据卷中，重启后仍可恢复。
+- Worker 可将加密状态保存在本地文件，或通过 `DATABASE_URL` 保存在 PostgreSQL；Compose 默认启动 PostgreSQL。
+- 私有部署可使用 AES-256-GCM 本地信封加密；公网部署必须配置 Vault Transit。Worker 健康检查会明确报告其 KMS 与生产就绪状态。
+- 桌面桥接只由本机主动注册和轮询，配对令牌保存在系统钥匙串；可实际执行受限的 `codex exec` 或 `claude -p` 作业。
+- 支持受限 MCP Streamable HTTP 工具调用、GitHub 仓库验证/分支/文件提交/PR，以及 Vercel 预览部署。Vercel 生产部署必须由项目所有者在请求中显式确认。
 - 项目默认私有；公开内容只来自用户选择且经过脱敏的快照。
 - 自带中文和 English 工作区、任务板、讨论记录、席位配置、反馈入口和桌面端检测骨架。
 
-当前未完成 GitHub OAuth、多用户隔离、数据库/KMS、原生 Anthropic/Gemini 协议、本地 Agent 实际执行、MCP、GitHub PR 和 Vercel 部署。请不要把这个 Alpha 直接公开到互联网或用于多租户生产环境。
+首次公开部署前，必须创建自己的 GitHub OAuth App、PostgreSQL 密码，并为公网实例配置 Vault Transit、HTTPS、反向代理与限流。没有这些外部授权或基础设施时，相关操作会明确失败，绝不会以模拟结果冒充成功。
 
 ## 公开体验
 
@@ -36,7 +41,7 @@ pnpm check:local
 pnpm start:local
 ```
 
-打开 `http://localhost:5173`，在“模型与代理”中添加至少一个云端模型。Endpoint 必须是 OpenAI 兼容的公共 HTTPS 地址，例如供应商提供的 `/v1` 地址。Worker 会将密钥、任务和运行记录加密写入 `WORKER_DATA_PATH`，默认位置为 `./data/worker-state.json`。
+打开 `http://localhost:5173`，先使用 GitHub 登录并创建私有项目，再在“模型与代理”中添加席位。OpenAI 兼容模型需要公共 HTTPS `/v1` Endpoint；Anthropic 和 Gemini 使用其原生协议，可不填写 Endpoint。Worker 会将密钥、任务和运行记录加密保存。
 
 `start:local` 会同时启动 Worker 和 Web 服务，按 `Ctrl+C` 可一并停止。开发模式仍可在两个终端中分别运行：
 
@@ -55,19 +60,19 @@ cp .env.example .env
 docker compose up --build
 ```
 
-默认只绑定 `127.0.0.1:5173`，Worker 只存在于 Docker 内部网络。浏览器通过 Web 服务反向代理访问 `/api`，不会直接暴露 Worker 端口。
+默认只绑定 `127.0.0.1:5173`，Worker 与 PostgreSQL 只存在于 Docker 内部网络。浏览器通过 Web 服务反向代理访问 `/api`，不会直接暴露 Worker 或数据库端口。
 
 备份时需要同时备份 Docker 卷 `council_data` 和 `ENVELOPE_KEK_BASE64`；丢失密钥将无法解密已保存的云端凭据。更完整的部署与恢复说明见 [自托管指南](docs/self-hosting.md)。
 
 ## 安全边界
 
-- Worker 只使用自己保存、已启用且本次被选中的席位；请求无法注入席位定义。
+- Worker 只使用自己保存、已启用、属于当前项目且本次被选中的席位；请求无法注入席位定义或跨项目读取资源。
 - 模型输入、模型输出和公开快照都会执行敏感信息脱敏；上游错误正文不会返回给浏览器。
 - 质疑与裁决阶段只接收被标记为不可信的前序输出，不能改变工具权限。
-- 执行器、终端、GitHub、部署、测试和截图验证未接入时会明确显示“未执行”。
+- 本地执行器、MCP、GitHub PR 和 Vercel 只会在连接、权限与所有者确认均已满足时调用；未获授权时会明确保留风险。
 - `ALLOW_INSECURE_MODEL_ENDPOINTS=true` 仅可用于本机 mock 测试，不能用于正常部署。
 
-`LocalEnvelopeCipher` 是本地参考实现，不是 KMS/Vault 的替代品。面向互联网部署前必须实现身份认证、项目授权、速率限制、审计存储与受管密钥服务。
+`LocalEnvelopeCipher` 适合受信任的私有自托管环境，不是受管 KMS 的替代品。面向互联网部署必须使用 Vault Transit 或等效受管 KMS，并在反向代理层配置 HTTPS、限流和监控。
 
 ## 灵感与致谢
 
@@ -92,6 +97,7 @@ pnpm desktop:doctor
 - [安全策略](SECURITY.md)
 - [行为准则](CODE_OF_CONDUCT.md)
 - [架构说明](docs/architecture.md)
+- [外部集成与桌面桥接](docs/integrations.md)
 - [公开体验指南](docs/public-demo.md)
 - [灵感与致谢](docs/acknowledgements.md)
 - [发布检查表](docs/release-checklist.md)

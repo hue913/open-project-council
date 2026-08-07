@@ -14,7 +14,7 @@
 - [ ] `git init -b main`（仅首次）并创建远程仓库。
 - [ ] 推送前检查 `git status` 与 `git diff --check`。
 - [ ] 在仓库设置中启用 Issues、Private Security Advisories、分支保护和 CI 必需检查。
-- [ ] 发布当前 Alpha 标签，附上已知限制和升级说明。
+- [ ] 发布版本标签，附上 KMS、OAuth、数据库迁移和升级说明。
 - [ ] 如发布公开体验，将 `apps/web/dist` 推送到专用 `gh-pages` 分支，并确认 Pages 只提供静态文件。
 
 首次公开源码时，可在确认暂存内容不含私有文件后执行：
@@ -24,7 +24,7 @@ git config user.name "你的 GitHub 用户名"
 git config user.email "你的 GitHub noreply 邮箱"
 git add .env.example .github .gitignore CHANGELOG.md CODE_OF_CONDUCT.md CONTRIBUTING.md Dockerfile LICENSE README.md SECURITY.md apps docker-compose.yml docs package.json packages pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json
 git diff --cached --check
-git commit -m "发布 Open Project Council Alpha"
+git commit -m "发布 Open Project Council"
 gh repo create open-project-council --public --source=. --remote=origin --push
 git tag -a v0.1.0-alpha.1 -m "Open Project Council v0.1.0-alpha.1"
 git push origin v0.1.0-alpha.1
@@ -37,4 +37,4 @@ git push origin v0.1.0-alpha.1
 ## 禁止项
 
 - [ ] 不提交 API Key、Token、私有任务、运行记录、Docker 数据卷或 `.env`。
-- [ ] 不将当前 Alpha 作为多用户公网服务宣传。
+- [ ] 公网部署已验证 Vault Transit、HTTPS、PostgreSQL 备份、限流和 GitHub OAuth 回调。

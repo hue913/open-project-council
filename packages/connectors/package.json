@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "dependencies": {
+    "@open-project-council/core": "workspace:*"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

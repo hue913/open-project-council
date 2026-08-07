@@ -14,6 +14,47 @@ export type TaskStatus = "draft" | "queued" | "processing" | "ready" | "error";
 export type RunPhase = "independent" | "critique" | "decision" | "execution" | "verification" | "complete" | "failed";
 export type AgentKind = "cloud_model" | "local_coding_agent" | "mcp_tool";
 export type Permission = "read" | "write" | "execute" | "deploy_preview" | "deploy_production";
+export type ProjectRole = "owner" | "editor" | "viewer";
+
+export interface User {
+  id: string;
+  githubId: string;
+  login: string;
+  name?: string;
+  avatarUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectMembership {
+  projectId: string;
+  userId: string;
+  role: ProjectRole;
+  createdAt: string;
+}
+
+export interface AuditEvent {
+  id: string;
+  projectId: string;
+  actorId: string;
+  action: string;
+  targetType: string;
+  targetId: string;
+  createdAt: string;
+  detail?: string;
+}
+
+export interface GitHubRepositoryConnection {
+  provider: "github";
+  fullName: string;
+  defaultBranch: string;
+  installationId?: string;
+}
+
+export interface VercelConnection {
+  projectName?: string;
+  teamId?: string;
+}
 
 export interface Project {
   id: string;
@@ -23,11 +64,8 @@ export interface Project {
   visibility: "private";
   createdAt: string;
   updatedAt: string;
-  linkedRepository?: {
-    provider: "github";
-    fullName: string;
-    defaultBranch: string;
-  };
+  linkedRepository?: GitHubRepositoryConnection;
+  vercelConnection?: VercelConnection;
 }
 
 export interface AgentSeat {
@@ -125,4 +163,32 @@ export interface AgentConnector {
   health(): Promise<{ healthy: boolean; detail?: string }>;
   execute(request: AgentExecutionRequest, onEvent: (event: AgentExecutionEvent) => void): Promise<void>;
   cancel(runId: string): Promise<void>;
+}
+
+export interface LocalAgentJob {
+  id: string;
+  projectId: string;
+  runId: string;
+  seatId: string;
+  agent: "codex" | "claude";
+  prompt: string;
+  permissions: Permission[];
+  workspacePath?: string;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface GitHubPullRequestRequest {
+  repository: string;
+  baseBranch: string;
+  branch: string;
+  title: string;
+  body: string;
+  changes: Array<{ path: string; content: string }>;
+}
+
+export interface DeliveryResult {
+  kind: "github_pr" | "vercel_preview";
+  url: string;
+  id: string | number;
 }
