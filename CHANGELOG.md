@@ -2,6 +2,17 @@
 
 遵循 Keep a Changelog 风格。
 
+## 0.1.0-alpha.2 - 2026-08-08
+
+### Added
+
+- `pnpm check:local` 在启动前验证 Node 版本、构建产物、端口与 32 字节加密主密钥。
+- `pnpm start:local` 用一个前台进程启动 Web 和 Worker，支持统一退出。
+
+### Changed
+
+- README 与自托管指南改为可直接执行的单终端源码运行流程。
+
 ## 0.1.0-alpha.1 - 2026-08-08
 
 ### Added

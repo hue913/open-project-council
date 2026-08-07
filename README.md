@@ -23,16 +23,21 @@
 corepack enable
 pnpm install
 export ENVELOPE_KEK_BASE64="$(openssl rand -base64 32)"
-pnpm dev:worker
-```
-
-另开一个终端：
-
-```bash
-pnpm dev
+pnpm build
+pnpm check:local
+pnpm start:local
 ```
 
 打开 `http://localhost:5173`，在“模型与代理”中添加至少一个云端模型。Endpoint 必须是 OpenAI 兼容的公共 HTTPS 地址，例如供应商提供的 `/v1` 地址。Worker 会将密钥加密写入 `WORKER_DATA_PATH`，默认位置为 `./data/worker-state.json`。
+
+`start:local` 会同时启动 Worker 和 Web 服务，按 `Ctrl+C` 可一并停止。开发模式仍可在两个终端中分别运行：
+
+```bash
+pnpm dev:worker
+pnpm dev
+```
+
+不要把 `ENVELOPE_KEK_BASE64` 写入 Git、Issue、日志或公开快照。备份 `data/` 前请先确认其中没有明文项目材料；恢复加密席位状态时必须使用同一个主密钥。
 
 ## Docker 自托管
 
@@ -65,7 +70,7 @@ pnpm build
 pnpm desktop:doctor
 ```
 
-CI 会在 Node 24 和 pnpm 11 上运行类型检查、测试与生产构建。
+提交 PR 前应在 Node 24 与 pnpm 11 上运行上述检查。
 
 ## 贡献与发布
 

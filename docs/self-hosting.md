@@ -37,3 +37,18 @@ docker compose up --build -d
 ```
 
 本项目的 Compose 配置从当前源码构建应用镜像，因此升级需要先拉取已审阅的源码，再重新构建容器。升级前备份数据卷。状态文件格式不兼容时，Worker 会返回存储不可用，而不是清空已有数据。
+
+## 直接从源码运行
+
+适合没有 Docker 的使用者。先生成并仅保存在当前终端或密码管理器中的密钥：
+
+```bash
+corepack enable
+pnpm install --frozen-lockfile
+export ENVELOPE_KEK_BASE64="$(openssl rand -base64 32)"
+pnpm build
+pnpm check:local
+pnpm start:local
+```
+
+`start:local` 同时运行 Web 与 Worker。使用 `Ctrl+C` 会停止两项服务。首次接入模型前请确认 `http://localhost:5173` 仅对你信任的设备可见；这个 Alpha 不是可供陌生用户共用的公共 SaaS。
