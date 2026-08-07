@@ -1,0 +1,22 @@
+{
+  "name": "open-project-council",
+  "version": "0.1.0",
+  "private": true,
+  "description": "An open-source multi-model project workspace.",
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@11.9.0",
+  "scripts": {
+    "dev": "pnpm --filter @open-project-council/web dev",
+    "dev:worker": "pnpm --filter @open-project-council/worker dev",
+    "build": "pnpm --filter @open-project-council/core build && pnpm --filter @open-project-council/connectors build && pnpm --filter @open-project-council/worker build && pnpm --filter @open-project-council/web build",
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm --filter @open-project-council/core build && pnpm --filter @open-project-council/connectors build && pnpm -r --if-present typecheck",
+    "desktop:doctor": "pnpm --filter @open-project-council/desktop doctor"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}

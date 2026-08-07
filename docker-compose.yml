@@ -1,0 +1,42 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:${WEB_PORT:-5173}:5173"
+    environment:
+      WEB_PORT: 5173
+      WORKER_URL: http://worker:8787
+    depends_on:
+      worker:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5173/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    expose:
+      - "8787"
+    environment:
+      APP_URL: ${APP_URL:-http://localhost:5173}
+      WORKER_PORT: 8787
+      WORKER_DATA_PATH: /data/worker-state.json
+      ENVELOPE_KEK_BASE64: ${ENVELOPE_KEK_BASE64:?Set ENVELOPE_KEK_BASE64 in .env}
+    volumes:
+      - council_data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8787/health').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  council_data:
