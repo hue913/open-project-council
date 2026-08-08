@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="field" x1="104" y1="76" x2="920" y2="950" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#27CBE2"/>
+      <stop offset="0.54" stop-color="#087C9B"/>
+      <stop offset="1" stop-color="#07506E"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="300" y1="238" x2="750" y2="790" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.94"/>
+      <stop offset="1" stop-color="#C6F8FF" stop-opacity="0.54"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="34" stdDeviation="30" flood-color="#023B54" flood-opacity="0.34"/>
+    </filter>
+  </defs>
+  <rect x="44" y="44" width="936" height="936" rx="238" fill="url(#field)"/>
+  <circle cx="786" cy="246" r="115" fill="#FFD37C" fill-opacity="0.9"/>
+  <circle cx="262" cy="782" r="132" fill="#FF8F7B" fill-opacity="0.9"/>
+  <g filter="url(#shadow)">
+    <path d="M299 287C299 255 325 229 357 229H667C699 229 725 255 725 287V665C725 697 699 723 667 723H357C325 723 299 697 299 665V287Z" fill="url(#glass)" stroke="#FFFFFF" stroke-opacity="0.82" stroke-width="22"/>
+    <path d="M382 417H642" stroke="#087E9C" stroke-width="49" stroke-linecap="round"/>
+    <path d="M382 512H565" stroke="#087E9C" stroke-width="49" stroke-linecap="round"/>
+    <path d="M382 607H510" stroke="#087E9C" stroke-width="49" stroke-linecap="round"/>
+    <circle cx="650" cy="607" r="55" fill="#FF957D" stroke="#FFFFFF" stroke-width="18"/>
+  </g>
+</svg>

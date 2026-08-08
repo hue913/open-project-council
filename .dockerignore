@@ -1,0 +1,16 @@
+# Local dependencies and build products are recreated inside the image.
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+target/
+**/target/
+coverage/
+data/
+
+# Never send local credentials or repository metadata to the build daemon.
+.env
+.env.*
+.git/
+.DS_Store
+*.log
