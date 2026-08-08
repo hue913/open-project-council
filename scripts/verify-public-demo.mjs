@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const outputDirectory = new URL("../apps/web/dist/", import.meta.url);
+const outputDirectory = new URL("../apps/web/public-demo-dist/", import.meta.url);
 const indexFile = new URL("index.html", outputDirectory);
 const forbiddenTerms = ["/api/", "agent-seats", "model-api-key", "apiKey", "ENVELOPE_KEK_BASE64"];
 
@@ -13,7 +13,7 @@ function collectFiles(directory) {
 }
 
 if (!existsSync(indexFile)) {
-  throw new Error("Public demo build did not produce apps/web/dist/index.html.");
+  throw new Error("Public demo build did not produce apps/web/public-demo-dist/index.html.");
 }
 
 const leakedTerm = collectFiles(outputDirectory.pathname)

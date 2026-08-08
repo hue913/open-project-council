@@ -1,5 +1,6 @@
 node_modules/
 dist/
+public-demo-dist/
 .vite/
 coverage/
 .env

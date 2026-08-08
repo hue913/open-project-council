@@ -15,7 +15,7 @@
 - [ ] 推送前检查 `git status` 与 `git diff --check`。
 - [ ] 在仓库设置中启用 Issues、Private Security Advisories、分支保护和 CI 必需检查。
 - [ ] 发布版本标签，附上 KMS、OAuth、数据库迁移和升级说明。
-- [ ] 如发布公开体验，将 `apps/web/dist` 推送到专用 `gh-pages` 分支，并确认 Pages 只提供静态文件。
+- [ ] 如发布公开体验，将 `apps/web/public-demo-dist` 推送到专用 `gh-pages` 分支，并确认 Pages 只提供静态文件。
 
 首次公开源码时，可在确认暂存内容不含私有文件后执行：
 

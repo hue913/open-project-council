@@ -18,8 +18,10 @@ child.on("error", (error) => {
 
 child.on("exit", (code) => {
   if (code === 0) {
-    const source = new URL("../apps/web/dist/public-demo.html", import.meta.url);
-    const target = new URL("../apps/web/dist/index.html", import.meta.url);
+    // The public-demo build is emitted to its own directory so it never overwrites the
+    // regular `dist/` served by the local server and the Docker image.
+    const source = new URL("../apps/web/public-demo-dist/public-demo.html", import.meta.url);
+    const target = new URL("../apps/web/public-demo-dist/index.html", import.meta.url);
     if (existsSync(source)) renameSync(source, target);
   }
   process.exitCode = code ?? 1;
