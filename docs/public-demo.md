@@ -11,17 +11,17 @@ pnpm install --frozen-lockfile
 pnpm build:public-demo
 ```
 
-构建结果位于 `apps/web/dist`。默认基础路径为 `/open-project-council/`，适用于 GitHub Pages 项目站点。站点名称不同可在构建前设置 `VITE_BASE_PATH`，例如：
+构建结果位于 `apps/web/public-demo-dist`（与本地和 Docker 使用的 `apps/web/dist` 分离，两者互不覆盖）。默认基础路径为 `/open-project-council/`，适用于 GitHub Pages 项目站点。站点名称不同可在构建前设置 `VITE_BASE_PATH`，例如：
 
 ```bash
 VITE_BASE_PATH=/my-site/ pnpm build:public-demo
 ```
 
-构建会验证 `dist/index.html` 存在，并拒绝包含私有 `/api` 路径、席位管理或凭据字段标识的产物。
+构建会验证 `public-demo-dist/index.html` 存在，并拒绝包含私有 `/api` 路径、席位管理或凭据字段标识的产物。
 
 ## GitHub Pages
 
-仓库所有者可以将 `apps/web/dist` 的内容发布到专用 `gh-pages` 分支，再在仓库 Settings → Pages 中选择该分支的根目录作为发布源。Open Project Council 的公开体验地址为：
+仓库所有者可以将 `apps/web/public-demo-dist` 的内容发布到专用 `gh-pages` 分支，再在仓库 Settings → Pages 中选择该分支的根目录作为发布源。Open Project Council 的公开体验地址为：
 
 `https://hue913.github.io/open-project-council/`
 

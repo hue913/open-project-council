@@ -553,7 +553,7 @@ const server = createServer(async (request, response) => {
       return writeJson(response, 200, { user: user ?? null });
     }
     if (request.method === "GET" && url.pathname === "/api/auth/github/start") {
-      if (!process.env.GITHUB_CLIENT_ID || !process.env.GITHUB_CLIENT_SECRET) throw new HttpError(503, "GitHub OAuth is not configured");
+      if (!process.env.GITHUB_CLIENT_ID || !process.env.GITHUB_CLIENT_SECRET) return redirect(response, `${origin()}/?authError=oauth_config`);
       const returnTo = url.searchParams.get("returnTo");
       const safeReturnTo = returnTo && returnTo.startsWith(origin()) ? returnTo : `${origin()}/`;
       const state = randomBytes(32).toString("base64url");
@@ -681,9 +681,11 @@ const server = createServer(async (request, response) => {
     }
     return writeJson(response, 404, { error: "Not found" });
   } catch (error) {
-    const status = error instanceof HttpError ? error.status : 500;
-    const message = error instanceof Error ? error.message : "Unexpected worker failure";
-    return writeJson(response, status, { error: status >= 500 ? "The secure Worker could not complete this request" : message });
+    // HttpError instances carry our own intentional, non-sensitive messages (validation,
+    // config, and honest "not configured" states). Unexpected failures are not HttpError and
+    // must be masked so internal details never reach the browser.
+    if (error instanceof HttpError) return writeJson(response, error.status, { error: error.message });
+    return writeJson(response, 500, { error: "The secure Worker could not complete this request" });
   }
 });
 

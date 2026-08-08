@@ -51,7 +51,7 @@ const agentRoleOptions = [
 
 const copy = {
   zh: {
-    private: "私有项目", overview: "概览", tasks: "任务", council: "议事厅", integrations: "集成与交付", publish: "发布快照", feedback: "反馈", about: "关于与致谢", publicDemo: "公开体验", publicDemoCopy: "不接收 API Key、不连接 Worker，也不保存任务。完整模型协作请自行部署私有实例。", selfHostFull: "部署完整实例", runDemo: "运行示例议事",
+    private: "私有项目", overview: "概览", tasks: "任务", council: "议事厅", integrations: "集成与交付", publish: "发布快照", feedback: "反馈", about: "关于与致谢", publicDemo: "公开体验", publicDemoCopy: "不接收 API Key、不连接 Worker，也不保存任务。完整模型协作请自行部署私有实例。", authErrorConfig: "GitHub OAuth 尚未配置。请由管理员设置 GITHUB_CLIENT_ID 与 GITHUB_CLIENT_SECRET 后再登录。", authErrorState: "登录状态校验失败，请重新尝试登录。", selfHostFull: "部署完整实例", runDemo: "运行示例议事",
     createTask: "新建任务", run: "运行议事协议", running: "协议已完成", publishNow: "生成公开快照", preview: "打开 Vercel 预览",
     taskTitle: "任务标题", taskGoal: "完成目标", kind: "任务类型", requiredRoles: "所需席位职责", saveTask: "保存并加入任务板", savingTask: "正在加密保存", taskLoadError: "未能读取已保存的任务；当前仅显示本地草稿。", taskSaveError: "无法保存任务。", runError: "议事运行失败；未保存模拟结果。", cancel: "取消",
     project: "项目", agents: "代理席位", budget: "本次预算", toolBoundary: "工具边界", public: "公开内容", noRun: "还没有运行记录。先从一个任务开始。",
@@ -65,7 +65,7 @@ const copy = {
     agentSettings: "模型与代理", configureAgents: "配置模型与 Agent", agentSettingsTitle: "模型与 Agent 席位", agentSettingsHelp: "为项目分配模型职责与受控工具。云端密钥只发送到 Worker 加密保存。", addAgent: "添加模型或 Agent", noCustomAgents: "尚未接入自定义席位。", connected: "已连接", disabled: "已停用", enable: "启用", disable: "停用", provider: "供应商或 Agent", model: "模型", endpoint: "OpenAI 兼容 API Endpoint", role: "任务职责", seatName: "席位名称", cloudModel: "云端模型", localAgent: "本地编码 Agent", mcpTool: "MCP 工具", apiKey: "API Key", apiKeyHelp: "密钥仅用于本次提交；浏览器不保留它。云端模型需填写兼容的 HTTPS Endpoint；Worker 需要设置 ENVELOPE_KEK_BASE64 才会接受云端密钥。", saveAgent: "保存席位", savingAgent: "正在加密并保存", agentSaved: "席位已保存，可参与后续运行。", agentLoadError: "未能读取已保存的席位。", setupError: "无法保存席位。", closeAgentDialog: "关闭模型与 Agent 窗口", roleLabels: { cloud_model: "云端模型", local_coding_agent: "本地编码 Agent", mcp_tool: "MCP 工具" }, credentialLabels: { cloud_envelope: "加密云端凭据", local: "本地钥匙串", none: "无需云端凭据" }, agentsAvailable: "已启用席位可参与当前任务", feedbackContact: "反馈联络：QQ 2136493019", templateLabel: "任务模板", templateHelp: "选择模板会预填目标、验收标准、工具与最小权限；保存前都可以修改。", acceptanceHelp: "每行一个可验证的验收标准。", acceptanceRequired: "至少保留一条验收标准。", aboutEyebrow: "开源说明", aboutTitle: "为独立判断而设计", aboutLead: "Open Project Council 把多模型讨论组织成可审计的项目运行：独立方案、交叉质疑、裁决、受限执行与验证。", aboutBoundary: "独立实现与安全边界", aboutBoundaryCopy: "项目默认私有。用户的项目、密钥和产物归用户所有；开源的是平台代码，而不是用户内容。", aboutSources: "灵感与来源", aboutSourcesCopy: "我们感谢下列公开项目和技术社区提供的产品与工程启发。引用不表示合作、背书、授权或隶属关系。", viewSource: "查看来源", acknowledgement: "感谢开源社区", acknowledgementCopy: "感谢每一个公开分享多 Agent 协作、工作流编排、模型网关和本地工具实践的团队与贡献者。完整对应关系与取舍已写入仓库文档。",
   },
   en: {
-    private: "Private project", overview: "Overview", tasks: "Tasks", council: "Council", integrations: "Integrations & delivery", publish: "Publish snapshot", feedback: "Feedback", about: "About and thanks", publicDemo: "Public demo", publicDemoCopy: "This demo accepts no API keys, connects to no Worker, and stores no tasks. Self-host a private instance for full model collaboration.", selfHostFull: "Self-host the full app", runDemo: "Run sample council",
+    private: "Private project", overview: "Overview", tasks: "Tasks", council: "Council", integrations: "Integrations & delivery", publish: "Publish snapshot", feedback: "Feedback", about: "About and thanks", publicDemo: "Public demo", publicDemoCopy: "This demo accepts no API keys, connects to no Worker, and stores no tasks. Self-host a private instance for full model collaboration.", authErrorConfig: "GitHub OAuth is not configured. Ask an admin to set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET before signing in.", authErrorState: "Sign-in state validation failed. Please try signing in again.", selfHostFull: "Self-host the full app", runDemo: "Run sample council",
     createTask: "New task", run: "Run council protocol", running: "Protocol complete", publishNow: "Create public snapshot", preview: "Open Vercel preview",
     taskTitle: "Task title", taskGoal: "Goal", kind: "Task kind", requiredRoles: "Required seat roles", saveTask: "Save to task board", savingTask: "Saving with encryption", taskLoadError: "Saved tasks could not be loaded; only a local draft is shown.", taskSaveError: "Could not save the task.", runError: "Council run failed; no simulated result was saved.", cancel: "Cancel",
     project: "Project", agents: "Agent seats", budget: "Run budget", toolBoundary: "Tool boundary", public: "Public content", noRun: "No runs yet. Start with a task.",
@@ -133,6 +133,7 @@ function PrivateWorkspace() {
   const [runError, setRunError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [agentSaved, setAgentSaved] = useState(false);
+  const [authErrorCode, setAuthErrorCode] = useState<string | null>(null);
   const t = copy[locale];
   const selectedProjectEntry = projectEntries.find((entry) => entry.project.id === selectedProjectId);
   const project = selectedProjectEntry?.project;
@@ -141,6 +142,7 @@ function PrivateWorkspace() {
   const selectedSeats = useMemo(() => seats.filter((seat) => seat.enabled), [seats]);
   const canEdit = role === "owner" || role === "editor";
   const navigation: View[] = ["overview", "tasks", "council", "agents", "integrations", "about"];
+  const authErrorMessage = authErrorCode === "oauth_config" ? t.authErrorConfig : authErrorCode === "oauth_state" ? t.authErrorState : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -149,6 +151,14 @@ function PrivateWorkspace() {
       .then(({ user: currentUser }) => { if (!cancelled) setUser(currentUser); })
       .catch(() => { if (!cancelled) { setUser(null); setLoadError("无法连接到私有工作区服务。"); } });
     return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search).get("authError");
+    if (!code) return;
+    setAuthErrorCode(code);
+    // Drop the parameter so the error does not persist across refreshes or shared links.
+    window.history.replaceState({}, "", window.location.pathname);
   }, []);
 
   useEffect(() => {
@@ -242,7 +252,7 @@ function PrivateWorkspace() {
   }
 
   if (isLoading || user === undefined) return <main className="auth-screen"><section className="auth-card"><span className="brand-mark">◌</span><p>正在验证私有工作区会话…</p></section></main>;
-  if (!user) return <LoginScreen error={loadError} />;
+  if (!user) return <LoginScreen error={authErrorMessage ?? loadError} />;
   if (!project) return <ProjectLauncher user={user} error={loadError} onCreate={createProject} onSignOut={signOut} />;
 
   function updateProject(updated: Project) {
