@@ -15,6 +15,7 @@ export type RunPhase = "independent" | "critique" | "decision" | "execution" | "
 export type AgentKind = "cloud_model" | "local_coding_agent" | "mcp_tool";
 export type Permission = "read" | "write" | "execute" | "deploy_preview" | "deploy_production";
 export type ProjectRole = "owner" | "editor" | "viewer";
+export type BrowserAction = "click" | "type" | "navigate" | "select" | "submit" | "wait" | "finish";
 
 export interface User {
   id: string;
@@ -66,6 +67,19 @@ export interface Project {
   updatedAt: string;
   linkedRepository?: GitHubRepositoryConnection;
   vercelConnection?: VercelConnection;
+  decisionModel?: DecisionModelConfig;
+}
+
+/** 推理时决策模型配置。JEV 通过现有模型席位适配器接入，未配置时不会调用。 */
+export interface DecisionModelConfig {
+  enabled: boolean;
+  provider: "jev";
+  model: string;
+  endpoint: string;
+  seatId?: string;
+  visionEnabled?: boolean;
+  confidenceThreshold?: number;
+  fallback?: "critic" | "human";
 }
 
 export interface AgentSeat {
@@ -94,7 +108,90 @@ export interface Task {
   allowedTools: string[];
   budgetUsd: number;
   requiredPermissions: Permission[];
+  useDecisionModel?: boolean;
   status: TaskStatus;
+  createdAt: string;
+}
+
+export interface ExperienceRecord {
+  id: string;
+  projectId: string;
+  taskKind: TaskKind;
+  state: string;
+  action: string;
+  reward: number;
+  reflection: string;
+  createdAt: string;
+  trajectoryId?: string;
+  rewardBreakdown?: Record<string, number>;
+  failureReason?: string;
+}
+
+export interface BrowserStep {
+  index: number;
+  action: BrowserAction;
+  target?: string;
+  value?: string;
+  screenshotId?: string;
+  approved: boolean;
+  createdAt: string;
+  accessibilityTree?: string;
+}
+
+export interface BrowserRunResult {
+  id: string;
+  projectId: string;
+  taskId?: string;
+  status: "queued" | "running" | "success" | "failed" | "cancelled";
+  finalUrl?: string;
+  success: boolean;
+  reward: number;
+  steps: BrowserStep[];
+  failureReason?: string;
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface TrajectoryRecord {
+  id: string;
+  projectId: string;
+  runId?: string;
+  taskId?: string;
+  source: "agent" | "browser" | "ssh";
+  events: Array<{
+    type: "state" | "action" | "observation" | "approval" | "result" | "reflection";
+    content: string;
+    screenshotId?: string;
+    createdAt: string;
+  }>;
+  reward?: number;
+  success?: boolean;
+  createdAt: string;
+  expiresAt?: string;
+}
+
+export interface ApprovalRequest {
+  id: string;
+  projectId: string;
+  runId?: string;
+  kind: "ssh" | "browser" | "file" | "deployment" | "decision";
+  summary: string;
+  payload: Record<string, string>;
+  status: "pending" | "approved" | "rejected" | "expired";
+  requestedAt: string;
+  resolvedAt?: string;
+  resolvedBy?: string;
+}
+
+export interface RemoteConnection {
+  id: string;
+  projectId: string;
+  name: string;
+  host: string;
+  port: number;
+  username: string;
+  protocol: "ssh" | "rdp" | "vnc";
+  screenUrl?: string;
   createdAt: string;
 }
 

@@ -42,6 +42,8 @@ services:
     environment:
       APP_URL: ${APP_URL:-http://localhost:5173}
       WORKER_PORT: 8787
+      BROWSER_RUNNER_URL: http://browser-runner:8790
+      BROWSER_RUNNER_TOKEN: ${BROWSER_RUNNER_TOKEN:-}
       DATABASE_URL: postgresql://${POSTGRES_USER:-council}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-council}
       KMS_PROVIDER: ${KMS_PROVIDER:-local}
       ENVELOPE_KEK_BASE64: ${ENVELOPE_KEK_BASE64:?Set ENVELOPE_KEK_BASE64 in .env}
@@ -60,6 +62,23 @@ services:
       retries: 5
     restart: unless-stopped
 
+  browser-runner:
+    build:
+      context: .
+      dockerfile: apps/browser-runner/Dockerfile
+    expose:
+      - "8790"
+    environment:
+      BROWSER_RUNNER_PORT: 8790
+      BROWSER_RUNNER_TOKEN: ${BROWSER_RUNNER_TOKEN:-}
+      BROWSER_RUNNER_DATA_DIR: /data/browser-runs
+      BROWSER_ALLOWED_ORIGINS: ${BROWSER_ALLOWED_ORIGINS:-}
+      BROWSER_RUNNER_SCREENSHOT_KEY_BASE64: ${BROWSER_RUNNER_SCREENSHOT_KEY_BASE64:-}
+    volumes:
+      - council_browser_runs:/data/browser-runs
+    restart: unless-stopped
+
 volumes:
   council_data:
   council_postgres:
+  council_browser_runs:

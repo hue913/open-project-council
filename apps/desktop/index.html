@@ -31,6 +31,32 @@
         <p id="connection-state">尚未连接项目。</p>
         <div><button id="run-next" type="button" disabled>运行下一项作业</button><button id="revoke" type="button" disabled>撤销本地授权</button></div>
       </section>
+      <section class="panel controls">
+        <p>AI SSH</p><h2>受控远程命令</h2>
+        <p>默认只读；写入、重启、部署和删除命令会要求逐次审批。凭据由系统 ssh-agent 或钥匙串提供。</p>
+        <form id="ssh-form">
+          <label>服务器<input name="host" placeholder="server.example.com" required /></label>
+          <label>端口<input name="port" type="number" min="1" max="65535" value="22" required /></label>
+          <label>用户名<input name="username" required /></label>
+          <label>命令<input name="command" value="uname" required /></label>
+          <label>参数（每行一个）<textarea name="args" rows="3" placeholder="-a"></textarea></label>
+          <label class="approval-row"><input name="approved" type="checkbox" />我确认执行可能改变服务器状态的命令</label>
+          <button type="submit">运行 SSH 命令</button>
+        </form>
+        <pre id="ssh-output" class="terminal-output" aria-live="polite">尚未运行命令。</pre>
+        <div class="terminal-session-controls">
+          <button id="ssh-session-open" type="button">打开交互式会话</button>
+          <button id="ssh-session-close" type="button" disabled>关闭会话</button>
+        </div>
+        <label>会话输入<textarea id="ssh-session-input" rows="2" placeholder="输入命令后回车"></textarea></label>
+        <pre id="ssh-session-output" class="terminal-output" aria-live="polite">交互式会话尚未打开。</pre>
+      </section>
+      <section class="panel controls">
+        <p>REMOTE SCREEN</p><h2>服务器画面</h2>
+        <label>Web VNC/RDP/Wayland 网关 URL<input id="screen-url" type="url" placeholder="https://gateway.example.com/" /></label>
+        <button id="open-screen" type="button">在应用内显示</button>
+        <iframe id="screen-frame" title="服务器画面" hidden></iframe>
+      </section>
       <p class="message" id="message" role="status"></p>
     </main>
     <script type="module" src="/src/desktop-app.ts"></script>

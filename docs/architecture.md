@@ -6,6 +6,7 @@
 - Every request that names a project checks a `viewer` / `editor` / `owner` membership before loading data or creating side effects. Credentials have an explicit user or project owner and are never returned in a response.
 - A cloud envelope secret is decrypted only by the Worker immediately before a permitted provider call. The state seam supports encrypted local files and PostgreSQL. `LocalEnvelopeCipher` is restricted to private self-hosting; Vault Transit is the KMS adapter for public deployments.
 - The desktop bridge makes outbound requests only. A one-time pairing code creates a bridge token held in the operating-system keychain; the Worker can queue a job but cannot initiate a connection to the user's computer.
+- The browser runner is a separate Playwright service. The Worker authenticates to it with `BROWSER_RUNNER_TOKEN`; browser credentials and screenshots never enter model prompts or public snapshots.
 - Project content is private by default. Publishing creates a separate, revocable snapshot with redaction scanning; it never changes the source project's visibility.
 
 ## Run lifecycle
@@ -20,6 +21,7 @@ Only the declared transitions are valid. A failed phase ends the run with `error
 - Coding uses an architect, implementer, and test/security reviewer.
 - Code review, security audit, research, data analysis, product planning, technical writing, and web design each have their own three-seat role template.
 - The Worker stores the task before a real run and reloads completed runs from its encrypted archive after restart. The browser can choose only seat IDs; it cannot inject an arbitrary provider endpoint, role, or credential into a run request.
+- Agent and browser runs create short-lived structured trajectories with state, action, observation, approval, result, reward, and reflection events. Trajectories and screenshots expire after seven days by default.
 
 ## Connector and delivery contract
 

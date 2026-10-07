@@ -1,7 +1,8 @@
 use keyring::Entry;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
-use std::{fs, path::Path, process::Command};
+use std::{collections::HashMap, fs, io::{Read, Write}, path::Path, process::Command, sync::{Arc, Mutex, OnceLock}, sync::atomic::{AtomicU64, Ordering}, thread};
+use portable_pty::{native_pty_system, Child, CommandBuilder, MasterPty, PtySize};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -61,6 +62,69 @@ struct LocalJob {
 #[derive(Deserialize)]
 struct JobPollResponse {
   job: Option<LocalJob>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SshConnection {
+  host: String,
+  port: u16,
+  username: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SshCommandResult {
+  output: String,
+  exit_code: i32,
+  requires_approval: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SshSessionResult {
+  session_id: String,
+  requires_approval: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SshOutputResult {
+  output: String,
+  closed: bool,
+}
+
+struct SshSession {
+  master: Mutex<Box<dyn MasterPty + Send>>,
+  writer: Mutex<Box<dyn Write + Send>>,
+  output: Arc<Mutex<Vec<u8>>>,
+  child: Mutex<Box<dyn Child + Send + Sync>>,
+}
+
+static SSH_SESSIONS: OnceLock<Mutex<HashMap<String, Arc<SshSession>>>> = OnceLock::new();
+static NEXT_SESSION_ID: AtomicU64 = AtomicU64::new(1);
+
+fn ssh_sessions() -> &'static Mutex<HashMap<String, Arc<SshSession>>> {
+  SSH_SESSIONS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn validate_ssh_connection(connection: &SshConnection) -> Result<(), String> {
+  let host = connection.host.trim();
+  let username = connection.username.trim();
+  if host.is_empty() || username.is_empty() || connection.port == 0 {
+    return Err("SSH host, username, and port are required".to_string());
+  }
+  if host.contains([' ', '\n', '\r', '@', '/']) || username.contains([' ', '\n', '\r', '@', '/']) {
+    return Err("SSH host or username contains unsupported shell characters".to_string());
+  }
+  Ok(())
+}
+
+fn validate_pty_size(cols: u16, rows: u16) -> Result<(), String> {
+  if cols == 0 || rows == 0 || cols > 500 || rows > 300 {
+    return Err("PTY size must be between 1x1 and 500x300".to_string());
+  }
+  Ok(())
 }
 
 fn keychain_entry(project_id: &str) -> Result<Entry, String> {
@@ -207,10 +271,136 @@ fn revoke_workspace_access(project_id: String) -> Result<(), String> {
   save_connected_project_ids(&projects)
 }
 
+fn ssh_command_requires_approval(command: &str, args: &[String]) -> bool {
+  let value = std::iter::once(command).chain(args.iter().map(String::as_str)).collect::<Vec<_>>().join(" ").to_ascii_lowercase();
+  [" rm ", "rm -", " mv ", " cp ", " touch ", " mkdir ", " rmdir ", " reboot", " shutdown", " poweroff", " systemctl restart", " systemctl stop", " deploy", " kubectl apply", " kubectl delete", " docker rm", " docker stop", " chmod ", " chown ", " sudo ", " git push", " npm install", " pip install", " apt install", " kill "]
+    .iter()
+    .any(|needle| format!(" {value} ").contains(needle))
+}
+
+#[tauri::command]
+fn open_ssh_session(connection: SshConnection, cols: u16, rows: u16, approved: bool) -> Result<SshSessionResult, String> {
+  validate_ssh_connection(&connection)?;
+  validate_pty_size(cols, rows)?;
+  if !approved {
+    // Opening a shell is read-only by itself; commands typed into it still require
+    // the user's approval at the command execution boundary.
+  }
+  let pty_system = native_pty_system();
+  let pair = pty_system.openpty(PtySize { rows, cols, pixel_width: 0, pixel_height: 0 }).map_err(|error| format!("无法创建 PTY: {error}"))?;
+  let mut command = CommandBuilder::new("ssh");
+  command.arg("-tt");
+  command.arg("-p");
+  command.arg(connection.port.to_string());
+  command.arg(format!("{}@{}", connection.username.trim(), connection.host.trim()));
+  let child = pair.slave.spawn_command(command).map_err(|error| format!("无法启动 ssh: {error}"))?;
+  drop(pair.slave);
+  let reader = pair.master.try_clone_reader().map_err(|error| format!("无法读取 SSH 输出: {error}"))?;
+  let writer = pair.master.take_writer().map_err(|error| format!("无法写入 SSH 会话: {error}"))?;
+  let output = Arc::new(Mutex::new(Vec::new()));
+  let output_for_reader = Arc::clone(&output);
+  thread::spawn(move || {
+    let mut reader = reader;
+    let mut buffer = [0_u8; 4096];
+    loop {
+      match reader.read(&mut buffer) {
+        Ok(0) | Err(_) => break,
+        Ok(count) => {
+          if let Ok(mut pending) = output_for_reader.lock() {
+            pending.extend_from_slice(&buffer[..count]);
+            if pending.len() > 200_000 {
+              let trim = pending.len() - 200_000;
+              pending.drain(..trim);
+            }
+          }
+        }
+      }
+    }
+  });
+  let id = format!("ssh-{}", NEXT_SESSION_ID.fetch_add(1, Ordering::Relaxed));
+  let session = Arc::new(SshSession { master: Mutex::new(pair.master), writer: Mutex::new(writer), output, child: Mutex::new(child) });
+  ssh_sessions().lock().map_err(|_| "SSH 会话锁不可用".to_string())?.insert(id.clone(), session);
+  Ok(SshSessionResult { session_id: id, requires_approval: false })
+}
+
+#[tauri::command]
+fn write_ssh_input(session_id: String, input: String, approved: bool) -> Result<(), String> {
+  let command_line = input.trim_end_matches(['\r', '\n']).trim();
+  if input.contains(['\0']) || command_line.contains(['\n', '\r', ';', '|', '&', '`', '$']) {
+    return Err("SSH 输入包含不支持的字符".to_string());
+  }
+  let sessions = ssh_sessions().lock().map_err(|_| "SSH 会话锁不可用".to_string())?;
+  let session = sessions.get(&session_id).ok_or("SSH 会话不存在或已关闭")?;
+  if !approved && ssh_command_requires_approval(command_line, &[]) {
+    return Err("此输入可能改变服务器状态，需要逐次审批".to_string());
+  }
+  session.writer.lock().map_err(|_| "SSH 写入锁不可用".to_string())?.write_all(input.as_bytes()).map_err(|error| format!("无法写入 SSH 会话: {error}"))?;
+  Ok(())
+}
+
+#[tauri::command]
+fn read_ssh_output(session_id: String) -> Result<SshOutputResult, String> {
+  let sessions = ssh_sessions().lock().map_err(|_| "SSH 会话锁不可用".to_string())?;
+  let session = sessions.get(&session_id).ok_or("SSH 会话不存在或已关闭")?;
+  let mut pending = session.output.lock().map_err(|_| "SSH 输出锁不可用".to_string())?;
+  let bytes = std::mem::take(&mut *pending);
+  let closed = session.child.lock().ok().and_then(|mut child| child.try_wait().ok()).flatten().is_some();
+  Ok(SshOutputResult { output: String::from_utf8_lossy(&bytes).to_string(), closed })
+}
+
+#[tauri::command]
+fn resize_ssh_session(session_id: String, cols: u16, rows: u16) -> Result<(), String> {
+  validate_pty_size(cols, rows)?;
+  let session = {
+    let sessions = ssh_sessions().lock().map_err(|_| "SSH 会话锁不可用".to_string())?;
+    Arc::clone(sessions.get(&session_id).ok_or("SSH 会话不存在或已关闭")?)
+  };
+  let result = session.master.lock().map_err(|_| "PTY 锁不可用".to_string())?.resize(PtySize { rows, cols, pixel_width: 0, pixel_height: 0 }).map_err(|error| format!("无法调整 PTY 尺寸: {error}"));
+  result
+}
+
+#[tauri::command]
+fn close_ssh_session(session_id: String) -> Result<(), String> {
+  let session = ssh_sessions().lock().map_err(|_| "SSH 会话锁不可用")?.remove(&session_id);
+  if let Some(session) = session {
+    if let Ok(mut child) = session.child.lock() {
+      let _ = child.kill();
+      let _ = child.wait();
+    }
+  }
+  Ok(())
+}
+
+#[tauri::command]
+fn run_ssh_command(connection: SshConnection, command: String, args: Vec<String>, approved: bool) -> Result<SshCommandResult, String> {
+  let host = connection.host.trim();
+  let username = connection.username.trim();
+  let command = command.trim();
+  validate_ssh_connection(&connection)?;
+  if command.is_empty() {
+    return Err("SSH host, username, port, and command are required".to_string());
+  }
+  if host.contains([' ', '\n', '\r', '@', '/']) || username.contains([' ', '\n', '\r', '@', '/']) || command.contains(['\n', '\r', ';', '|', '&', '`', '$']) || args.iter().any(|arg| arg.contains(['\n', '\r', ';', '|', '&', '`', '$'])) {
+    return Err("SSH fields contain unsupported shell characters".to_string());
+  }
+  let requires_approval = ssh_command_requires_approval(command, &args);
+  if requires_approval && !approved {
+    return Ok(SshCommandResult { output: "此命令可能写入、重启、部署或删除数据，需要逐次审批。".to_string(), exit_code: 126, requires_approval: true });
+  }
+  let mut child = Command::new("ssh");
+  child.arg("-p").arg(connection.port.to_string()).arg(format!("{username}@{host}")).arg(command);
+  for arg in args { child.arg(arg); }
+  let output = child.output().map_err(|error| format!("无法启动 ssh: {error}"))?;
+  let stdout = String::from_utf8_lossy(&output.stdout);
+  let stderr = String::from_utf8_lossy(&output.stderr);
+  let combined = format!("{}{}{}", stdout, if !stdout.is_empty() && !stderr.is_empty() { "\n" } else { "" }, stderr);
+  Ok(SshCommandResult { output: combined.chars().take(20_000).collect(), exit_code: output.status.code().unwrap_or(1), requires_approval: false })
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
-    .invoke_handler(tauri::generate_handler![inspect_local_agents, connect_local_agent, list_connected_projects, run_next_local_job, revoke_workspace_access])
+    .invoke_handler(tauri::generate_handler![inspect_local_agents, connect_local_agent, list_connected_projects, run_next_local_job, revoke_workspace_access, run_ssh_command, open_ssh_session, write_ssh_input, read_ssh_output, resize_ssh_session, close_ssh_session])
     .run(tauri::generate_context!())
     .expect("error while running desktop application");
 }

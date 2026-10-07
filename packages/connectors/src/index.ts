@@ -3,3 +3,4 @@ export * from "./anthropic.js";
 export * from "./gemini.js";
 export * from "./github.js";
 export * from "./vercel.js";
+export * from "./jev.js";

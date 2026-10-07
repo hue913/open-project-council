@@ -189,6 +189,10 @@ nav { display: grid; gap: 4px; }
 .integration-card input, .integration-card textarea { width: 100%; padding: 9px 10px; color: #195668; background: rgb(255 255 255 / .8); border: 1px solid rgb(50 184 181 / .36); border-radius: 7px; font: inherit; font-size: 13px; font-weight: 400; }
 .integration-card textarea { resize: vertical; }
 .integration-card input:focus, .integration-card textarea:focus { outline: 2px solid rgb(35 205 184 / .52); border-color: #00a994; }
+.remote-list { display: grid; gap: 12px; }
+.remote-item { display: grid; gap: 6px; padding-top: 12px; border-top: 1px solid rgb(48 176 179 / .2); }
+.remote-item small { color: #2f6676; }
+.remote-item iframe { width: 100%; min-height: 260px; border: 1px solid rgb(50 184 181 / .36); border-radius: 7px; background: #102d35; }
 .confirm-production { display: flex !important; align-items: center; gap: 8px; font-weight: 500 !important; }
 .confirm-production input { width: auto; accent-color: #009b8c; }
 .pairing-output { display: grid; gap: 7px; margin-top: 4px; padding: 12px; color: #1e586a; background: rgb(225 251 255 / .72); border: 1px solid rgb(83 202 221 / .48); border-radius: 7px; font-size: 12px; }

@@ -19,6 +19,9 @@
 - 支持受限 MCP Streamable HTTP 工具调用、GitHub 仓库验证/分支/文件提交/PR，以及 Vercel 预览部署。Vercel 生产部署必须由项目所有者在请求中显式确认。
 - 项目默认私有；公开内容只来自用户选择且经过脱敏的快照。
 - 自带中文和 English 工作区、任务板、讨论记录、席位配置、反馈入口和桌面端检测骨架。
+- Worker 内置 Planner / Executor / Critic 编排，并将相似经验、结果奖励、轨迹和 Reflexion 反思保存为可审计记录；轨迹和截图默认七天后清理。
+- JEV（`autotrust/JEV-27B`、`autotrust/JEV-9B`、`autotrust/JEV-27B-VL`）通过外部 `/v1/decide` Endpoint 可选接入。项目和任务必须同时开启，低置信度会回退到 Critic 或人工审批。
+- 独立 Playwright Browser Runner 支持 WebArena 兼容站点、隔离 BrowserContext、accessibility tree、截图、奖励和可重放步骤；SSH 交互式 PTY 与 noVNC/RDP/Wayland 画面可在桌面端使用。
 
 首次公开部署前，必须创建自己的 GitHub OAuth App、PostgreSQL 密码，并为公网实例配置 Vault Transit、HTTPS、反向代理与限流。没有这些外部授权或基础设施时，相关操作会明确失败，绝不会以模拟结果冒充成功。
 
@@ -63,6 +66,8 @@ docker compose up --build
 默认只绑定 `127.0.0.1:5173`，Worker 与 PostgreSQL 只存在于 Docker 内部网络。浏览器通过 Web 服务反向代理访问 `/api`，不会直接暴露 Worker 或数据库端口。
 
 备份时需要同时备份 Docker 卷 `council_data` 和 `ENVELOPE_KEK_BASE64`；丢失密钥将无法解密已保存的云端凭据。更完整的部署与恢复说明见 [自托管指南](docs/self-hosting.md)。
+
+`browser-runner` 是独立容器。将 WebArena 兼容的 Shopping、GitLab、论坛和 Wiki 服务部署在私有网络中，在 `.env` 设置 `WEBARENA_*_URL` 和 `BROWSER_ALLOWED_ORIGINS`，再通过任务的 `browser` 工具权限启动运行。Runner 不包含测试账号或站点镜像。
 
 ## 安全边界
 
